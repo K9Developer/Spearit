@@ -1,7 +1,13 @@
 use crate::models::connection::connection::Connection;
 
+enum ScoutWrapperState {
+    NotConnected,
+    Connected
+}
+
 pub struct ScoutWrapper {
     conn: Connection,
+    state: ScoutWrapperState
 //     write_shared_mem
 //     read_shared_mem
 

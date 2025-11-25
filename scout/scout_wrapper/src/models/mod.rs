@@ -16,6 +16,7 @@ pub mod connection {
     pub mod connection;
     pub mod message_trait;
     pub mod utils;
+    pub mod fields;
 
     pub mod messages {
         pub mod handshake;

@@ -2,13 +2,12 @@ use std::io;
 use std::io::{ErrorKind, Read, Write};
 use std::net::{Shutdown, TcpStream};
 use aes::Aes128;
-use aes::cipher::block_padding::Pkcs7;
+use aes::cipher::block_padding::{Pkcs7, UnpadError};
 use aes::cipher::generic_array::GenericArray;
-use bytemuck::{bytes_of, from_bytes, Pod};
 use cbc::cipher::{BlockDecryptMut, BlockEncryptMut, KeyIvInit};
 use cbc::{Decryptor, Encryptor};
 use crate::constants::{SOCKET_FIELD_LENGTH_SIZE, SOCKET_FULL_LENGTH_SIZE};
-use crate::models::connection::utils::{pkcs7_pad, pkcs7_unpad};
+use crate::models::connection::fields::Fields;
 
 pub struct Connection {
     iv: [u8; 16],
@@ -18,7 +17,6 @@ pub struct Connection {
     socket: Option<TcpStream>,
 }
 
-
 impl Connection {
     pub fn new() -> Self {
         Connection {
@@ -27,6 +25,20 @@ impl Connection {
             in_encrypt_mode: false,
             socket: None,
         }
+    }
+
+    pub fn set_iv(&mut self, iv: [u8; 16]) { self.iv = iv.into(); }
+    pub fn set_session_key(&mut self, session_key: [u8; 32]) { self.session_key.copy_from_slice(&session_key[..16]); }
+    pub fn enable_encryption(&mut self) { self.in_encrypt_mode = true; }
+    pub fn disable_encryption(&mut self) { self.in_encrypt_mode = false; }
+
+    fn get_cipher_enc(&self) -> Encryptor<Aes128> {
+        if !self.in_encrypt_mode { panic!("Not in encryption mode yet!"); }
+        Encryptor::<Aes128>::new(&GenericArray::from(self.session_key), &GenericArray::from(self.iv))
+    }
+    fn get_cipher_dec(&self) -> Decryptor<Aes128> {
+        if !self.in_encrypt_mode { panic!("Not in encryption mode yet!"); }
+        Decryptor::<Aes128>::new(&GenericArray::from(self.session_key), &GenericArray::from(self.iv))
     }
 
     pub fn stop(&mut self) {
@@ -41,121 +53,47 @@ impl Connection {
         Ok(())
     }
 
-    pub fn send_raw(&mut self, buf: Vec<u8>) -> std::io::Result<()> {
+    fn recv_exact(&mut self, size: usize) -> io::Result<Vec<u8>> {
+        let mut buf = vec![0u8; size];
         match &mut self.socket {
-            None => {
-                panic!("Connection not established yet");
-            }
-            Some(soc) => {
-                soc.write_all(buf.as_slice())?;
-            }
-        }
-        Ok(())
-    }
-
-    fn receive_raw(&mut self, len: usize) -> std::io::Result<Vec<u8>> {
-        let mut buf = vec![0u8; len];
-        match &mut self.socket {
-            None => {
-                panic!("Connection not established yet");
-            },
-            Some(soc) => {
-                soc.read_exact(buf.as_mut_slice())?;
-            }
+            None => panic!("Connection not established yet"),
+            Some(soc) => soc.read_exact(buf.as_mut_slice())?
         }
         Ok(buf)
     }
 
-    fn get_cipher_enc(&self) -> Encryptor<Aes128> {
-        if !self.in_encrypt_mode {
-            panic!("Not in encryption mode yet!");
+    fn send_raw(&mut self, data: &[u8]) -> io::Result<()> {
+        match &mut self.socket {
+            None => panic!("Connection not established yet"),
+            Some(soc) => soc.write_all(data)?
         }
-        Encryptor::<Aes128>::new(&GenericArray::from(self.session_key), &GenericArray::from(self.iv))
+        Ok(())
     }
 
-    fn get_cipher_dec(&self) -> Decryptor<Aes128> {
-        if !self.in_encrypt_mode {
-            panic!("Not in encryption mode yet!");
-        }
-        Decryptor::<Aes128>::new(&GenericArray::from(self.session_key), &GenericArray::from(self.iv))
-    }
-
-    fn encrypt_bytes(&mut self, buf: Vec<u8>) -> io::Result<Vec<u8>> {
-        let mut cipher = self.get_cipher_enc();
-        let mut out = buf.clone();
-        cipher.encrypt_padded_vec_mut::<Pkcs7>(&mut out);
-        Ok(out)
-    }
-
-    fn decrypt_bytes(&mut self, mut buf: Vec<u8>) -> io::Result<Vec<u8>> {
-        let cipher = self.get_cipher_dec();
-        match cipher.decrypt_padded_vec_mut::<Pkcs7>(&mut buf) {
-            Ok(plaintext) => Ok(plaintext),
-            Err(_) => Err(io::Error::new(ErrorKind::InvalidData, "bad padding or corrupt data")),
-        }
-    }
-
-    pub fn encode_field<T: Pod>(&self, field: T) -> Vec<u8> {
-        let bytes = bytes_of(&field);
-        let len: [u8; 4] = (bytes.len() as u32).to_be_bytes();
-        let mut out = Vec::with_capacity(4 + bytes.len());
-        out.extend_from_slice(&len);
-        out.extend_from_slice(bytes);
-        out
-    }
-
-    fn decode_field<T: Pod>(&self, field: Vec<u8>) -> T {
-        *from_bytes::<T>(&field)
-    }
-
-    pub fn set_in_encrypt_mode(&mut self, in_encrypt_mode: bool) {
-        self.in_encrypt_mode = in_encrypt_mode;
-    }
-
-    pub fn receive_full(&mut self) -> Result<Vec<u8>, io::Error> {
-        let full_len_raw = self.receive_raw(SOCKET_FULL_LENGTH_SIZE)?;
-        if full_len_raw.len() != SOCKET_FULL_LENGTH_SIZE {
-            return Err(io::Error::new(
-                ErrorKind::InvalidData,
-                "Expected full length of data",
-            ))
-        }
-        let full_len = u32::from_be_bytes(full_len_raw.try_into().unwrap());
-
-        let mut full_data_raw = self.receive_raw(full_len as usize)?;
+    pub fn send_fields(&mut self, fields: Fields) -> io::Result<()> {
+        let mut buf = fields.to_bytes();
         if self.in_encrypt_mode {
-            full_data_raw = self.decrypt_bytes(full_data_raw)?;
+            let mut out;
+            let enc = self.get_cipher_enc();
+            enc.encrypt_padded_vec_mut::<Pkcs7>(&mut out);
+            return self.send_raw(&out);
         }
-
-        Ok(full_data_raw)
+        self.send_raw(buf.as_slice())
     }
 
-    pub fn read_field<T: Pod>(&mut self, buf: &mut &[u8]) -> Result<T, io::Error> {
-        if buf.len() < SOCKET_FIELD_LENGTH_SIZE {
-            return Err(io::Error::new(ErrorKind::UnexpectedEof, "missing length header"));
+    pub fn recv_fields(&mut self) -> io::Result<Fields> {
+        let total_length_bytes = self.recv_exact(SOCKET_FULL_LENGTH_SIZE)?;
+        let total_length = usize::from_be_bytes(total_length_bytes.into());
+        let raw_fields = self.recv_exact(total_length)?;
+        if self.in_encrypt_mode {
+            let mut out;
+            let dec = self.get_cipher_dec();
+            match dec.decrypt_padded_vec_mut::<Pkcs7>(&mut out) {
+                Err(_) => return Err(io::Error::new(ErrorKind::InvalidData, "bad padding or corrupt data")),
+                _ => {}
+            }
+            return Fields::from_bytes(&out);
         }
-
-        let (len_bytes, rest) = buf.split_at(SOCKET_FIELD_LENGTH_SIZE);
-        let field_len = u32::from_be_bytes(len_bytes.try_into().unwrap()) as usize;
-
-        if rest.len() < field_len {
-            return Err(io::Error::new(ErrorKind::UnexpectedEof, "incomplete field data"));
-        }
-
-        let (field_raw, remaining) = rest.split_at(field_len);
-        *buf = remaining;
-        if field_raw.len() != size_of::<T>() {
-            return Err(io::Error::new(ErrorKind::InvalidData, "size mismatch"));
-        }
-
-        Ok(*from_bytes::<T>(field_raw))
-    }
-
-    pub fn set_iv(&mut self, iv: [u8; 16]) {
-        self.iv = iv.into();
-    }
-
-    pub fn set_session_key(&mut self, session_key: [u8; 32]) {
-        self.session_key.copy_from_slice(&session_key[..16]);
+        Fields::from_bytes(raw_fields.as_slice())
     }
 }
