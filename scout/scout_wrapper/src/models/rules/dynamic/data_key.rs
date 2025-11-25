@@ -1,7 +1,7 @@
 // TODO: build.rs should build from file got from server (eBPF will also use) so no need to update all for each change
 #[repr(C)]
 #[derive(Clone, Copy)]
-pub enum DataKey {
+pub enum ConditionKey {
     Connection_SrcIP = 0,
     Connection_DstIP = 1,
     Connection_SrcPort = 2,

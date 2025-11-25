@@ -1,6 +1,6 @@
 use std::ffi::c_char;
 use crate::constants::{MAX_CONDITIONS, MAX_CONDITION_RAW_VALUE_LENGTH};
-use crate::models::rules::dynamic::data_key::DataKey;
+use crate::models::rules::dynamic::data_key::ConditionKey;
 
 #[repr(C)]
 #[derive(Clone, Copy)]
@@ -19,7 +19,7 @@ pub enum Operator {
 pub struct ConditionValue {
     pub(crate) is_key: bool,
     pub(crate) raw: [c_char; MAX_CONDITION_RAW_VALUE_LENGTH],
-    pub(crate) key: DataKey
+    pub(crate) key: ConditionKey
 }
 
 #[repr(C)]

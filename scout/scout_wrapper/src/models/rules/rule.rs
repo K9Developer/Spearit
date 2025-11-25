@@ -1,6 +1,6 @@
 use crate::constants::{MAX_CONDITIONS, MAX_CONDITION_RAW_VALUE_LENGTH};
 use crate::models::rules::condition::{Condition, ConditionList, ConditionValue, Operator};
-use crate::models::rules::dynamic::data_key::DataKey;
+use crate::models::rules::dynamic::data_key::ConditionKey;
 use crate::models::rules::dynamic::event_type::EventType;
 use crate::models::rules::response::Response;
 
@@ -28,9 +28,9 @@ impl Rule {
         let mut conds = ConditionList {
             conditions: [
                 Condition {
-                    key: ConditionValue { is_key: false, key: DataKey::None, raw: [0; MAX_CONDITION_RAW_VALUE_LENGTH] },
+                    key: ConditionValue { is_key: false, key: ConditionKey::None, raw: [0; MAX_CONDITION_RAW_VALUE_LENGTH] },
                     op: Operator::Equals,
-                    value: ConditionValue { is_key: false, key: DataKey::None, raw: [0; MAX_CONDITION_RAW_VALUE_LENGTH] },
+                    value: ConditionValue { is_key: false, key: ConditionKey::None, raw: [0; MAX_CONDITION_RAW_VALUE_LENGTH] },
                 }; MAX_CONDITIONS
             ],
             length: 0,
