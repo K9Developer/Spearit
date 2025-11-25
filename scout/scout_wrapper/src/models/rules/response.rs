@@ -1,3 +1,5 @@
+#[repr(C)]
+#[derive(Clone, Copy)]
 pub enum ResponseType {
     AirGap = 0,
     Kill = 1,
@@ -6,7 +8,14 @@ pub enum ResponseType {
     Run = 4
 }
 
+#[repr(C)]
+#[derive(Copy, Clone)]
 pub struct Response {
     pub type_: ResponseType,
-    pub data: Option<String>,
+}
+
+#[repr(C)]
+pub struct ResponseList {
+    pub responses: [Response; 5],
+    pub length: usize,
 }
