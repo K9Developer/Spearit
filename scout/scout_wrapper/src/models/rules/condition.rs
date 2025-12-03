@@ -17,7 +17,7 @@ pub enum Operator {
 #[repr(C)]
 #[derive(Clone, Copy)]
 pub struct ConditionValue {
-    pub(crate) is_key: bool,
+    pub(crate) raw_length: usize,
     pub(crate) raw: [c_char; MAX_CONDITION_RAW_VALUE_LENGTH],
     pub(crate) key: ConditionKey
 }

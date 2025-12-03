@@ -1,4 +1,4 @@
-use crate::constants::{MAX_CONDITIONS, MAX_CONDITION_RAW_VALUE_LENGTH};
+use crate::constants::{MAX_CONDITIONS, MAX_CONDITION_RAW_VALUE_LENGTH, MAX_RESPONSES};
 use crate::models::rules::condition::{Condition, ConditionList, ConditionValue, Operator};
 use crate::models::rules::dynamic::data_key::ConditionKey;
 use crate::models::rules::dynamic::event_type::EventType;
@@ -8,6 +8,7 @@ use crate::models::rules::response::{Response, ResponseList, ResponseType};
 
 struct Rule {
     id: usize,
+    order: usize,
     name: String,
     enabled: bool,
     priority: u8,
@@ -19,6 +20,7 @@ struct Rule {
 #[repr(C)]
 struct CompiledRule {
     id: usize,
+    order: usize,
     event_type: EventType,
     conditions: ConditionList,
     responses: ResponseList
@@ -29,9 +31,9 @@ impl Rule {
         let mut conds = ConditionList {
             conditions: [
                 Condition {
-                    key: ConditionValue { is_key: true, key: ConditionKey::None, raw: [0; MAX_CONDITION_RAW_VALUE_LENGTH] },
+                    key: ConditionValue { raw_length: 0, key: ConditionKey::None, raw: [0; MAX_CONDITION_RAW_VALUE_LENGTH] },
                     op: Operator::Equals,
-                    value: ConditionValue { is_key: true, key: ConditionKey::None, raw: [0; MAX_CONDITION_RAW_VALUE_LENGTH] },
+                    value: ConditionValue { raw_length: 0, key: ConditionKey::None, raw: [0; MAX_CONDITION_RAW_VALUE_LENGTH] },
                 }; MAX_CONDITIONS
             ],
             length: 0,
@@ -41,13 +43,14 @@ impl Rule {
             conds.conditions[i] = cond.clone();
         }
 
-        let mut reses: [Response; 5] = [Response { type_: ResponseType::Run }; 5];
-        for (i, v) in self.responses.iter().take(5).enumerate() {
+        let mut reses: [Response; MAX_RESPONSES] = [Response { type_: ResponseType::Run }; MAX_RESPONSES];
+        for (i, v) in self.responses.iter().take(MAX_RESPONSES).enumerate() {
             reses[i] = v.clone();
         }
         
         CompiledRule {
             id: self.id,
+            order: self.order,
             event_type: self.event_type,
             responses: ResponseList {
                 responses: reses,
@@ -67,10 +70,11 @@ impl RuleBuilder {
         RuleBuilder {
             curr: Rule {
                 id: 0,
+                order: 0,
                 name: "".to_string(),
                 enabled: false,
                 priority: 0,
-                event_type: EventType::None,
+                event_type: EventType::Event_None,
                 conditions: vec![],
                 responses: vec![],
             }

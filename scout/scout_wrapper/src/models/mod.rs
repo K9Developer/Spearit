@@ -8,10 +8,6 @@ pub mod rules {
     }
 }
 
-pub mod report {
-    pub mod report;
-}
-
 pub mod connection {
     pub mod connection;
     pub mod message_trait;
@@ -22,3 +18,13 @@ pub mod connection {
         pub mod handshake;
     }
 }
+
+pub mod report {
+    pub mod report;
+}
+
+pub mod loader_shm {
+    pub mod shared_memory;
+}
+
+pub mod types;

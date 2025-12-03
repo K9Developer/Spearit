@@ -1,3 +1,5 @@
+use crate::constants::MAX_RESPONSES;
+
 #[repr(C)]
 #[derive(Clone, Copy)]
 pub enum ResponseType {
@@ -16,6 +18,6 @@ pub struct Response {
 
 #[repr(C)]
 pub struct ResponseList {
-    pub responses: [Response; 5],
+    pub responses: [Response; MAX_RESPONSES],
     pub length: usize,
 }

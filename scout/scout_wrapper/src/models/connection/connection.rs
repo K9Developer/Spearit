@@ -73,9 +73,8 @@ impl Connection {
     pub fn send_fields(&mut self, fields: Fields) -> io::Result<()> {
         let mut buf = fields.to_bytes();
         if self.in_encrypt_mode {
-            let mut out;
             let enc = self.get_cipher_enc();
-            enc.encrypt_padded_vec_mut::<Pkcs7>(&mut out);
+            let out = enc.encrypt_padded_vec_mut::<Pkcs7>(buf.as_slice());
             return self.send_raw(&out);
         }
         self.send_raw(buf.as_slice())
@@ -83,16 +82,17 @@ impl Connection {
 
     pub fn recv_fields(&mut self) -> io::Result<Fields> {
         let total_length_bytes = self.recv_exact(SOCKET_FULL_LENGTH_SIZE)?;
-        let total_length = usize::from_be_bytes(total_length_bytes.into());
+        let total_length = usize::from_be_bytes(total_length_bytes.as_slice()
+                                                    .try_into()
+                                                    .expect("Expected exactly 8 bytes for total_length"));
         let raw_fields = self.recv_exact(total_length)?;
         if self.in_encrypt_mode {
-            let mut out;
             let dec = self.get_cipher_dec();
-            match dec.decrypt_padded_vec_mut::<Pkcs7>(&mut out) {
+            let mut out = dec.decrypt_padded_vec_mut::<Pkcs7>(raw_fields.as_slice());
+            match out {
                 Err(_) => return Err(io::Error::new(ErrorKind::InvalidData, "bad padding or corrupt data")),
-                _ => {}
+                Ok(o) => return Fields::from_bytes(o.as_slice())
             }
-            return Fields::from_bytes(&out);
         }
         Fields::from_bytes(raw_fields.as_slice())
     }

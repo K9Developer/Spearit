@@ -14,8 +14,16 @@ impl MessageTrait for Handshake {
     fn handle(mut conn: Connection) -> io::Result<()> {
         // [Server -> Client] IV, PUB
         let mut server_iv_and_pub = conn.recv_fields()?;
-        let server_iv: [u8; 16] = server_iv_and_pub.consume_raw_field()?.value().into();
-        let server_pub_raw: [u8; 32] = server_iv_and_pub.consume_raw_field()?.value().into();
+        let server_iv: [u8; 16] = server_iv_and_pub.consume_raw_field()?.value()
+            .as_slice()
+            .try_into()
+            .map_err(|_| io::Error::new(io::ErrorKind::InvalidData, "IV must be 16 bytes"))?;
+
+        let server_pub_raw: [u8; 32] = server_iv_and_pub.consume_raw_field()?.value()
+            .as_slice()
+            .try_into()
+            .map_err(|_| io::Error::new(io::ErrorKind::InvalidData, "Public key must be 32 bytes"))?;
+
         let server_pub = PublicKey::from(server_pub_raw);
         conn.set_iv(server_iv);
 
@@ -35,7 +43,10 @@ impl MessageTrait for Handshake {
         conn.enable_encryption();
 
         let mut server_conf = conn.recv_fields()?;
-        let server_ts: [u8; 8] = server_conf.consume_raw_field()?.value().into();
+        let server_ts: [u8; 8] = server_conf.consume_raw_field()?.value()
+            .as_slice()
+            .try_into()
+            .map_err(|_| io::Error::new(io::ErrorKind::InvalidData, "Time stamp must be 8 bytes"))?;
         let restored_ts = u64::from_be_bytes(server_ts);
         let now_secs = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs();
         let diff = now_secs as i64 - restored_ts as i64;

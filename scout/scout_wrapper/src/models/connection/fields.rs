@@ -85,8 +85,8 @@ impl Fields {
             buf.extend(field.to_bytes())
         }
         let total_fields_length = buf.len() - SOCKET_FULL_LENGTH_SIZE;
-        let length_bytes = total_fields_length.to_be_bytes().to_vec()[0..SOCKET_FULL_LENGTH_SIZE];
-        buf[0..SOCKET_FIELD_LENGTH_SIZE].copy_from_slice(&length_bytes);
+        let length_bytes = &total_fields_length.to_be_bytes().to_vec()[0..SOCKET_FULL_LENGTH_SIZE];
+        buf[0..SOCKET_FIELD_LENGTH_SIZE].copy_from_slice(length_bytes);
         buf
     }
 
@@ -97,15 +97,15 @@ impl Fields {
 
         while index < bytes.len() {
             // grab length
-            let raw_length: [u8; SOCKET_FIELD_LENGTH_SIZE] = bytes[index..index+SOCKET_FIELD_LENGTH_SIZE].iter().into();
-            let field_length = usize::from_be_bytes(raw_length);
+            let raw_length: [u8; SOCKET_FIELD_LENGTH_SIZE] = bytes[index..index + SOCKET_FIELD_LENGTH_SIZE].try_into().expect("slice has wrong length");
+            let field_length = u32::from_be_bytes(raw_length) as usize;
             index += SOCKET_FIELD_LENGTH_SIZE;
             // validate index with new length
             if index+field_length+1 >= max_len { Err(Error::new(ErrorKind::InvalidData, "Fields length is too large"))?; }
             let field_type = bytes[index];
             index += 1;
 
-            let field = bytes[index..(index+field_length)];
+            let field = &bytes[index..(index+field_length)];
             builder = builder.add(FieldType::from_u8(field_type), field.to_vec());
             index+=field_length;
         }

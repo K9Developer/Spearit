@@ -1,7 +1,16 @@
-use crate::constants::MAX_REPORT_MESSAGE_SIZE;
+use crate::models::types::PacketViolationInfo;
+
+enum ReportType {
+    ReportPacket = 0,
+    ReportFile = 1
+}
+
+union ReportData {
+    packet_report: PacketViolationInfo
+}
 
 #[repr(C)]
 pub struct Report {
-    violated_rule_id: usize,
-    msg: [u8; MAX_REPORT_MESSAGE_SIZE]
+    pub type_: ReportType,
+    pub data: ReportData
 }

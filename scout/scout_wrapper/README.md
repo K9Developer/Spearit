@@ -65,6 +65,7 @@ packet - available under: network.send_packet, netowork.receive_packet
     packet.src_port
     packet.dst_port
     packet.payload
+    packet.protocol
 process (the process that activated the event) - available under: process, file
     pid
     name
@@ -111,6 +112,7 @@ Handshake (SH - SpearHead, SW - ScoutWrapper):
 session_key = SHA256(shared_secret || "SpearIT-session")
 
 [SH -> SW] encrypted(timestamp)
-[SW -> SH] encrypted(timestamp)
+[SW -> SH] encrypted(timestamp) (check if not the same timestamp!)
 ```
 
+TODO: Remove some .expect() and unwraps()
