@@ -1,29 +1,20 @@
 BPF_CLANG = clang
-CFLAGS_BPF = -O2 -g -target bpf \
-  -I/usr/include \
-  -I/usr/include/x86_64-linux-gnu
 BUILD_DIR = build
 
-all: loader hello.bpf.o
+SHARED_FLAGS = -Icommon -Icommon/report -Icommon/rule -Icommon/scout
+BPF_FLAGS = -O2 -g -target bpf -Iinclude/bpfs $(SHARED_FLAGS)
+LOADER_FLAGS = -Iinclude/loader -Iinclude/scout -Iinclude/logger
 
-hello.bpf.o: test/hello.bpf.c
-	$(BPF_CLANG) $(CFLAGS_BPF) -c $< -o $(BUILD_DIR)/$@
+LOADER_SRCS = $(wildcard src/loader/**/*.c)
+SCOUT_SRCS = $(wildcard src/scout/*.c)
+EXTRA_SRCS = src/logger/logger.c
 
-loader: loader/loader.c
-	cc -O2 -g $< -o $(BUILD_DIR)/loader -lbpf -lelf -lz
+all: loader packet_scout.bpf.o
 
+packet_scout.bpf.o: src/bpfs/network/packet_scout.bpf.c
+	$(BPF_CLANG) $(BPF_FLAGS) -c $< -o $(BUILD_DIR)/$@
 
-
-# all: packet_filter.bpf.o mem_monitor.bpf.o loader
-
-# packet_filter.bpf.o: xdp/packet_filter.bpf.c common/maps.h
-# 	$(BPF_CLANG) $(CFLAGS_BPF) -c $< -o $@
-
-# mem_monitor.bpf.o: memmon/mem_monitor.bpf.c common/maps.h
-# 	$(BPF_CLANG) $(CFLAGS_BPF) -c $< -o $@
-
-# loader: loader/main.c
-# 	cc -O2 -g -o $@ $< -lbpf -lelf -lz
-
+loader: $(LOADER_SRCS) $(SCOUT_SRCS) $(EXTRA_SRCS)
+	cc -O2 -g src/loader/loader.c $(LOADER_SRCS) $(SCOUT_SRCS) $(EXTRA_SRCS) -o $(BUILD_DIR)/loader -lbpf -lelf -lz $(SHARED_FLAGS) $(LOADER_FLAGS)
 clean:
 	rm -f $(BUILD_DIR)/*.o $(BUILD_DIR)/loader
