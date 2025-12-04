@@ -18,5 +18,7 @@ enum ViolationType {
 pub const MAX_SHARED_DATA_SIZE: usize = 1024;
 pub const SHARED_DATA_LENGTH_SIZE: usize = 8;
 pub const REQUEST_ID_SIZE: usize = 4;
+pub const SHARED_MEMORY_PATH_WRAPPER: &'static str = "scout_shared_memory_wrapper_write";
+pub const SHARED_MEMORY_PATH_LOADER: &'static str = "scout_shared_memory_loader_write";
 
 pub const MAX_PAYLOAD_SIZE: usize = 128;

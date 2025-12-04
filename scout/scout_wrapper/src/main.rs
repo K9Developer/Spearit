@@ -1,6 +1,9 @@
 use std::net::TcpStream;
+use scout_wrapper::models::loader_shm::shared_memory::SharedMemoryManager;
 
 fn main() {
+    let mut shmm = unsafe { SharedMemoryManager::new() };
+    unsafe { shmm.read(); }
     println!("Hello, world!");
 }
 /*
