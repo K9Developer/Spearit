@@ -24,7 +24,7 @@ typedef struct {
 } RawCommsResponse;
 
 typedef struct {
-    size_t key; // for checking if scout wrapper is initialized
+    size_t key;
     pthread_mutex_t lock;
     size_t current_conversation_id;
     CommID request_id;

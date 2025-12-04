@@ -1,44 +1,64 @@
+use scout_wrapper::models;
 use std::net::TcpStream;
-use scout_wrapper::models::loader_shm::shared_memory::SharedMemoryManager;
 
 fn main() {
-    let mut shmm = unsafe { SharedMemoryManager::new() };
-    unsafe { shmm.read(); }
-    println!("Hello, world!");
+    let mut shmm = unsafe { models::loader_shm::shared_memory::SharedMemoryManager::new() };
+    // wait for key press
+    println!("Press Enter to continue...");
+
+    // Create a mutable string to hold input (we just discard it here)
+    let mut buffer = String::new();
+
+    // Wait until the user presses Enter
+    std::io::stdin().read_line(&mut buffer).unwrap();
+
+    unsafe {
+        shmm.connect();
+        println!("Connected to shared memory.");
+    }
+
+    // Write data BEFORE signaling readiness to avoid race condition
+    let a = vec![43; 8];
+    unsafe {
+        shmm.write(
+            models::loader_shm::shared_memory::CommID::ReqActiveRuleIds,
+            a.as_slice(),
+        );
+    }
 }
 /*
 
 enum {
-	IPPROTO_IP = 0,
-	IPPROTO_ICMP = 1,
-	IPPROTO_IGMP = 2,
-	IPPROTO_IPIP = 4,
-	IPPROTO_TCP = 6,
-	IPPROTO_EGP = 8,
-	IPPROTO_PUP = 12,
-	IPPROTO_UDP = 17,
-	IPPROTO_IDP = 22,
-	IPPROTO_TP = 29,
-	IPPROTO_DCCP = 33,
-	IPPROTO_IPV6 = 41,
-	IPPROTO_RSVP = 46,
-	IPPROTO_GRE = 47,
-	IPPROTO_ESP = 50,
-	IPPROTO_AH = 51,
-	IPPROTO_MTP = 92,
-	IPPROTO_BEETPH = 94,
-	IPPROTO_ENCAP = 98,
-	IPPROTO_PIM = 103,
-	IPPROTO_COMP = 108,
-	IPPROTO_L2TP = 115,
-	IPPROTO_SCTP = 132,
-	IPPROTO_UDPLITE = 136,
-	IPPROTO_MPLS = 137,
-	IPPROTO_ETHERNET = 143,
-	IPPROTO_AGGFRAG = 144,
-	IPPROTO_RAW = 255,
-	IPPROTO_SMC = 256,
-	IPPROTO_MPTCP = 262,
-	IPPROTO_MAX = 263,
+    IPPROTO_IP = 0,
+    IPPROTO_ICMP = 1,
+    IPPROTO_IGMP = 2,
+    IPPROTO_IPIP = 4,
+    IPPROTO_TCP = 6,
+    IPPROTO_EGP = 8,
+    IPPROTO_PUP = 12,
+    IPPROTO_UDP = 17,
+    IPPROTO_IDP = 22,
+    IPPROTO_TP = 29,
+    IPPROTO_DCCP = 33,
+    IPPROTO_IPV6 = 41,
+    IPPROTO_RSVP = 46,
+    IPPROTO_GRE = 47,
+    IPPROTO_ESP = 50,
+    IPPROTO_AH = 51,
+    IPPROTO_MTP = 92,
+    IPPROTO_BEETPH = 94,
+    IPPROTO_ENCAP = 98,
+    IPPROTO_PIM = 103,
+    IPPROTO_COMP = 108,
+    IPPROTO_L2TP = 115,
+    IPPROTO_SCTP = 132,
+    IPPROTO_UDPLITE = 136,
+    IPPROTO_MPLS = 137,
+    IPPROTO_ETHERNET = 143,
+    IPPROTO_AGGFRAG = 144,
+    IPPROTO_RAW = 255,
+    IPPROTO_SMC = 256,
+    IPPROTO_MPTCP = 262,
+    IPPROTO_MAX = 263,
 };
 */

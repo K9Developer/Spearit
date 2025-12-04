@@ -1,7 +1,7 @@
 pub mod rules {
-    pub mod rule;
-    pub mod response;
     pub mod condition;
+    pub mod response;
+    pub mod rule;
     pub mod dynamic {
         pub mod data_key;
         pub mod event_type;
@@ -10,9 +10,9 @@ pub mod rules {
 
 pub mod connection {
     pub mod connection;
+    pub mod fields;
     pub mod message_trait;
     pub mod utils;
-    pub mod fields;
 
     pub mod messages {
         pub mod handshake;

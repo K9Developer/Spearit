@@ -32,6 +32,7 @@ void init() {
         log_error("Failed to map shared memory");
         exit(1);
     }
+
     initialized = true;
 }
 
@@ -60,6 +61,7 @@ size_t _shm_write(CommID req, void* extra, size_t len) {
 
 RawCommsResponse _shm_read() {
     init();
+    printf("Lock address: %p\n", (void*)&shared_mem_in->lock);
     pthread_mutex_lock(&shared_mem_in->lock);
     // todo: maybe make it heap and not stack? (the freeing will be on the user tho)
     RawCommsResponse tmp = (RawCommsResponse){ .size = 0 };
@@ -70,8 +72,8 @@ RawCommsResponse _shm_read() {
         memcpy(tmp.data, shared_mem_in->data, shared_mem_in->size);
         last_conversation_id = shared_mem_in->current_conversation_id;
     }
-    return tmp;
     pthread_mutex_unlock(&shared_mem_in->lock);
+    return tmp;
 }
 
 
@@ -92,5 +94,8 @@ void shm_send(CommID req, void* extra, size_t len) {
 
 void _wait_for_wrapper(void) {
     init();
-    while (shared_mem_in->key != WRAPPER_SHM_KEY) usleep(100000);
+    while (shared_mem_in->key != WRAPPER_SHM_KEY) {
+        usleep(100000);
+    }
+    shared_mem_out->key = LOADER_SHM_KEY;
 }

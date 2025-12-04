@@ -93,8 +93,20 @@ int main(int argc, char **argv)
     int err;
     log_info("Initialization complete, entering main loop...");
     log_debug("Waiting for wrapper to signal readiness...");
-    // wait_for_wrapper();
+    wait_for_wrapper();
     log_debug("Wrapper signaled readiness, entering main loop.");
+    bool found = false;
+    while (!found) {
+        RawCommsResponse a = _shm_read();
+        printf("Received initial message from wrapper, size: %zu\n", a.size);
+        // print data as hex
+        for (size_t i = 0; i < a.size; i++) {
+            printf("%02x ", a.data[i]);
+            found = true;
+        }
+        printf("\n");
+    }
+    exit(0);
     while (!exiting) {
         ring_buffer__consume(packet_rb);
         if (err = ring_buffer__consume(packet_rb) < 0) fprintf(stderr, "Error polling ring buffer (packet): %d\n", err);

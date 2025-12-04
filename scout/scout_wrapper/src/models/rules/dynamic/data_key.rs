@@ -28,5 +28,5 @@ pub enum ConditionKey {
 
     User_Name = 19,
 
-    None = 20
+    None = 20,
 }

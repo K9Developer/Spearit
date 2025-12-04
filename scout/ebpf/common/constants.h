@@ -1,14 +1,15 @@
 #pragma once
 
-#define SHARED_MEMORY_PATH_WRITE "scout_shared_memory_1"
-#define SHARED_MEMORY_PATH_READ "scout_shared_memory_2"
+#define SHARED_MEMORY_PATH_WRITE "scout_shared_memory_loader_write"
+#define SHARED_MEMORY_PATH_READ "scout_shared_memory_wrapper_write"
 
-#define WRAPPER_SHM_KEY 0xDEADBEEFDEADBEEF
+#define WRAPPER_SHM_KEY 0xDEADBEEFC0DEFACE
+#define LOADER_SHM_KEY 0xCAFEBABEFACEFEED
 
 // Rules
 #define MAX_CONDITION_RAW_VALUE_LENGTH 32
-#define MAX_CONDITIONS 7 // per rule
-#define MAX_RULES 24
+#define MAX_CONDITIONS 8 // per rule
+#define MAX_RULES 64
 #define MAX_RESPONSES 5
 
 #define VIOLATION_TYPE_PACKET 0
