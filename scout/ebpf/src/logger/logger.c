@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include "logger.h"
 #include <stdarg.h>
+#include <bpf/libbpf.h>
 
 #define RESET   "\x1b[0m"
 #define BOLD    "\x1b[1m"
@@ -41,4 +42,26 @@ void log_error(const char* format, ...) {
     va_list args; va_start(args, format);
     printf(E_PRE " "); vprintf(format, args); printf(RESET "\n");
     va_end(args);
+}
+
+int log_bpf(enum libbpf_print_level level, const char *format, va_list ap) {
+    // switch (level) {
+    //     case LIBBPF_WARN:
+    //         printf(W_PRE ""); printf(W_MSG "[BPF] ");
+    //         break;
+    //     case LIBBPF_INFO:
+    //         printf(I_PRE ""); printf(I_MSG "[BPF] ");
+    //         break;
+    //     case LIBBPF_DEBUG:
+    //         return 0;
+    //     default:
+    //         printf(I_PRE ""); printf(I_MSG "[BPF] ");
+    //         break;
+    // }
+    // all as debug
+    if (level == LIBBPF_DEBUG) return 0;
+    printf(D_PRE ""); printf(D_MSG " [BPF] ");
+    vprintf(format, ap);
+    printf(RESET);
+    return 0;
 }

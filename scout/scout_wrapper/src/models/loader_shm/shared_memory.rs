@@ -2,6 +2,7 @@ use crate::constants::{
     LOADER_SHM_KEY, MAX_SHARED_DATA_SIZE, SHARED_MEMORY_PATH_LOADER, SHARED_MEMORY_PATH_WRAPPER,
     WRAPPER_SHM_KEY,
 };
+use crate::{log_debug, log_error};
 use libc::{
     MAP_FAILED, MAP_SHARED, O_CREAT, O_RDWR, PROT_READ, PROT_WRITE, PTHREAD_MUTEX_ROBUST,
     PTHREAD_PROCESS_SHARED, c_char, c_int, ftruncate, mmap, perror, pthread_mutex_init,
@@ -97,51 +98,51 @@ pub struct SharedMemoryManager {
     mutex_attr_input: pthread_mutexattr_t,
     mutex_attr_output: pthread_mutexattr_t,
 
-    last_read_conversation_id: usize,
-    last_write_conversation_id: usize,
+    last_conversation_id: usize,
 }
 
 impl SharedMemoryManager {
     unsafe fn create_shm(name: &str) -> *mut SharedComms {
-        let name = CString::new(name).unwrap();
-        let fd: c_int = shm_open(name.as_ptr(), O_CREAT | O_RDWR, 0600);
-        if fd < 0 {
-            perror(
-                CString::new("Shared memory opening failed")
-                    .unwrap()
-                    .as_ptr(),
+        unsafe {
+            let name = CString::new(name).unwrap();
+            let fd: c_int = shm_open(name.as_ptr(), O_CREAT | O_RDWR, 0600);
+            if fd < 0 {
+                log_error!(
+                    "Shared memory opening failed: {}",
+                    CStr::from_ptr(strerror(*libc::__errno_location())).to_string_lossy()
+                );
+                panic!("Failed to open shared memory");
+            }
+            log_debug!("Opened shared memory: {}", name.to_string_lossy());
+            let size = size_of::<SharedComms>();
+
+            if ftruncate(fd, size as i64) < 0 {
+                log_error!(
+                    "Failed to truncate shared memory: {}",
+                    CStr::from_ptr(strerror(*libc::__errno_location())).to_string_lossy()
+                );
+                panic!("Failed to truncate shared memory");
+            }
+
+            let addr = mmap(
+                ptr::null_mut(),
+                size as size_t,
+                PROT_READ | PROT_WRITE,
+                MAP_SHARED,
+                fd,
+                0,
             );
-            panic!("Failed to open shared memory");
-        }
-        println!("Opened shared memory");
-        let size = size_of::<SharedComms>();
 
-        // ftruncate MUST be called before mmap to ensure the shared memory has the correct size
-        if ftruncate(fd, size as i64) < 0 {
-            perror(CString::new("ftruncate failed").unwrap().as_ptr());
-            panic!("Failed to truncate shared memory");
+            if addr == MAP_FAILED {
+                log_error!(
+                    "Shared memory creation failed: {}",
+                    CStr::from_ptr(strerror(*libc::__errno_location())).to_string_lossy()
+                );
+                panic!("Failed to create shared memory");
+            }
+            log_debug!("Created shared memory at address: {:p}", addr);
+            addr as *mut SharedComms
         }
-        println!("Truncated shared memory");
-
-        let addr = mmap(
-            ptr::null_mut(),
-            size as size_t,
-            PROT_READ | PROT_WRITE,
-            MAP_SHARED,
-            fd,
-            0,
-        );
-
-        if addr == MAP_FAILED {
-            perror(
-                CString::new("Shared memory creation failed")
-                    .unwrap()
-                    .as_ptr(),
-            );
-            panic!("Failed to create shared memory");
-        }
-        println!("Created shared memory");
-        addr as *mut SharedComms
     }
 
     fn init_shared_mutex(mutex: *mut pthread_mutex_t, attr: *mut pthread_mutexattr_t) {
@@ -152,72 +153,77 @@ impl SharedMemoryManager {
 
             let ret = libc::pthread_mutex_init(mutex, attr);
             if ret != 0 {
-                panic!("pthread_mutex_init failed: {}", ret);
+                log_error!(
+                    "Failed to initialize shared mutex: {}",
+                    CStr::from_ptr(strerror(ret)).to_string_lossy()
+                );
+                panic!("Failed to initialize shared mutex");
             }
             pthread_mutexattr_destroy(attr);
         }
     }
 
     pub unsafe fn new() -> Self {
-        let write_addr = SharedMemoryManager::create_shm(SHARED_MEMORY_PATH_WRAPPER);
-        let read_addr = SharedMemoryManager::create_shm(SHARED_MEMORY_PATH_LOADER);
+        unsafe {
+            let write_addr = SharedMemoryManager::create_shm(SHARED_MEMORY_PATH_WRAPPER);
+            let read_addr = SharedMemoryManager::create_shm(SHARED_MEMORY_PATH_LOADER);
 
-        libc::memset(write_addr as *mut libc::c_void, 0, size_of::<SharedComms>());
+            libc::memset(write_addr as *mut libc::c_void, 0, size_of::<SharedComms>());
 
-        ptr::write(write_addr, SharedComms::new(1));
-        ptr::write(read_addr, SharedComms::new(1));
+            ptr::write(write_addr, SharedComms::new(1));
+            ptr::write(read_addr, SharedComms::new(1));
 
-        let mut mutex_attr_output: pthread_mutexattr_t = mem::zeroed();
-        let mut mutex_attr_input: pthread_mutexattr_t = mem::zeroed();
+            let mut mutex_attr_output: pthread_mutexattr_t = mem::zeroed();
+            let mut mutex_attr_input: pthread_mutexattr_t = mem::zeroed();
 
-        SharedMemoryManager::init_shared_mutex(&mut (*write_addr).lock, &mut mutex_attr_output);
-        SharedMemoryManager::init_shared_mutex(&mut (*read_addr).lock, &mut mutex_attr_input);
+            SharedMemoryManager::init_shared_mutex(&mut (*write_addr).lock, &mut mutex_attr_output);
+            SharedMemoryManager::init_shared_mutex(&mut (*read_addr).lock, &mut mutex_attr_input);
 
-        println!("Lock1 Address: {:p}", &(*write_addr).lock);
-        println!("Lock2 Address: {:p}", &(*read_addr).lock);
+            SharedMemoryManager {
+                shared_output: write_addr,
+                shared_input: read_addr,
+                last_conversation_id: 0,
 
-        SharedMemoryManager {
-            shared_output: write_addr,
-            shared_input: read_addr,
-            last_read_conversation_id: 0,
-            last_write_conversation_id: 0,
-
-            mutex_attr_input,
-            mutex_attr_output,
+                mutex_attr_input,
+                mutex_attr_output,
+            }
         }
     }
 
     pub unsafe fn read(&self) -> SharedComms {
-        pthread_mutex_lock(&mut (*self.shared_input).lock);
-        println!("Shared memory read");
-        if (*self.shared_input).current_conversation_id == self.last_read_conversation_id {
-            panic!("Shared memory read failed - no conversation!");
-        }
+        unsafe {
+            pthread_mutex_lock(&mut (*self.shared_input).lock);
+            if (*self.shared_input).current_conversation_id == self.last_conversation_id {
+                return SharedComms::new(0);
+            }
 
-        let d = ptr::read(self.shared_input);
-        pthread_mutex_unlock(&mut (*self.shared_input).lock);
-        d
+            let d = ptr::read(self.shared_input);
+            pthread_mutex_unlock(&mut (*self.shared_input).lock);
+            self.last_conversation_id = d.current_conversation_id;
+            d
+        }
     }
 
     pub unsafe fn write(&mut self, request_id: CommID, data: &[u8]) {
-        pthread_mutex_lock(&mut (*self.shared_output).lock);
+        unsafe {
+            pthread_mutex_lock(&mut (*self.shared_output).lock);
 
-        self.last_write_conversation_id += 1;
-        (*self.shared_output).current_conversation_id = self.last_write_conversation_id;
-        (*self.shared_output).request_id = request_id.as_u32();
-        let size = data.len().min(MAX_SHARED_DATA_SIZE);
-        (*self.shared_output).size = size;
-        ptr::copy_nonoverlapping(data.as_ptr(), (*self.shared_output).data.as_mut_ptr(), size);
-
-        pthread_mutex_unlock(&mut (*self.shared_output).lock);
+            (*self.shared_output).current_conversation_id = self.last_conversation_id;
+            (*self.shared_output).request_id = request_id.as_u32();
+            let size = data.len().min(MAX_SHARED_DATA_SIZE);
+            (*self.shared_output).size = size;
+            ptr::copy_nonoverlapping(data.as_ptr(), (*self.shared_output).data.as_mut_ptr(), size);
+            self.last_conversation_id += 1;
+            pthread_mutex_unlock(&mut (*self.shared_output).lock);
+        }
     }
 
     pub unsafe fn connect(&mut self) {
+        log_debug!("Connecting to shared memory...");
         (*self.shared_output).key = WRAPPER_SHM_KEY;
-        println!("{:?}", (*self.shared_input).key);
         while (*self.shared_input).key != LOADER_SHM_KEY {
             thread::sleep(Duration::from_millis(200));
         }
-        println!("Connected to shared memory");
+        log_debug!("Connected to shared memory");
     }
 }

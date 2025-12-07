@@ -28,3 +28,7 @@ pub mod loader_shm {
 }
 
 pub mod types;
+
+pub mod logger {
+    pub mod logger;
+}

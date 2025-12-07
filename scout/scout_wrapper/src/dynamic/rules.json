@@ -1,0 +1,27 @@
+[
+    {
+        "id": 1,
+        "order": 0,
+        "name": "Block 9999 port connections",
+        "enabled": true,
+        "priority": 1,
+        "event_types": [
+            "network.send_packet",
+            "network.receive_packet"
+        ],
+        "conditions": [
+            {
+                "key": {
+                    "is_key": true,
+                    "value": "packet.destination_port"
+                },
+                "operator": "equals",
+                "value": {
+                    "is_key": false,
+                    "value": "Jw8="
+                }
+            }
+        ],
+        "responses": ["kill"]
+    }
+]

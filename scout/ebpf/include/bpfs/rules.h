@@ -61,16 +61,25 @@ static __noinline bool evaluate_op_num(__u128 val1, Operator op, __u128 val2) {
     }
 }
 
-// TODO: Verify without all the guard clause
-__noinline bool has_packet_condition_resolved(__u8 event, PacketViolationInfo *pv_info, Condition *condition) {
-    if (!pv_info || !condition) return false;
+static __noinline bool packet_matches_event(EventType event, PacketViolationInfo *pv_info) {
     if (event > Network_CreateConnection) return false;  // not a network event - should not occur as loader should prevent this
-    
-    // if directions don't match
-    if (event == Network_ReceivePacket && pv_info->direction != DIRECTION_INBOUND) return false;
-    if (event == Network_SendPacket && pv_info->direction != DIRECTION_OUTBOUND) return false;
-    if (event == Network_ReceiveConnection && (pv_info->direction != DIRECTION_INBOUND || !pv_info->is_connection_establishing)) return false;
-    if (event == Network_CreateConnection && (pv_info->direction != DIRECTION_OUTBOUND || !pv_info->is_connection_establishing)) return false;
+    switch (event) {
+        case Network_SendPacket:
+            return pv_info->direction == DIRECTION_OUTBOUND;
+        case Network_ReceivePacket:
+            return pv_info->direction == DIRECTION_INBOUND;
+        case Network_ReceiveConnection:
+            return pv_info->direction == DIRECTION_INBOUND && pv_info->is_connection_establishing;
+        case Network_CreateConnection:
+            return pv_info->direction == DIRECTION_OUTBOUND && pv_info->is_connection_establishing;
+        default:
+            return false;
+    }
+}
+
+__noinline bool has_packet_condition_resolved(PacketViolationInfo *pv_info, Condition *condition) {
+    if (!pv_info || !condition) return false;
+
 
     // if position in payload is not specified
     if (condition->op == InPayloadAt && condition->value.raw_length == 0) return false;
@@ -171,14 +180,27 @@ static __u128 evaluate_packet_rules(void* rules_array_map, PacketViolationInfo *
         CompiledRule *rule = (CompiledRule *)bpf_map_lookup_elem(rules_array_map, &rule_ind);
         if (!rule || rule->conditions.length == 0) continue;
 
-        EventType event = rule->event_type;
+        EventType* events = rule->event_types;
         bool rule_violated = true;
         
+        // check if rule events match packet event
+        bool found_one_match = false;
+        for (int i = 0; i < MAX_EVENTS_PER_RULE; i++) {
+            EventType ev = events[i];
+            if (events[i] == Event_None) break;
+            if (ev == Event_None) break;
+            if (packet_matches_event(events[i], pv_info)) {
+                found_one_match = true;
+                break;
+            }
+        }
+        if (!found_one_match) continue;
+
         #pragma clang loop unroll(disable)
         for (int cond_ind = 0; cond_ind < MAX_CONDITIONS; cond_ind++) {
             if (cond_ind >= rule->conditions.length) break;
             
-            if (!has_packet_condition_resolved((__u8)event, pv_info, &rule->conditions.conditions[cond_ind])) {
+            if (!has_packet_condition_resolved(pv_info, &rule->conditions.conditions[cond_ind])) {
                 rule_violated = false;
                 break;
             }

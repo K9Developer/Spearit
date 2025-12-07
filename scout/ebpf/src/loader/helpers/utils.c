@@ -1,4 +1,5 @@
 #include <bpf/libbpf.h>
+#include "logger.h"
 
 void pid_to_name(__u32 pid, char *name_buf, size_t buf_size)
 {
@@ -28,13 +29,13 @@ struct bpf_object * load_object(const char *filename)
     obj_file = bpf_object__open_file(filename, NULL);
     if (libbpf_get_error(obj_file)) {
         err = libbpf_get_error(obj_file);
-        fprintf(stderr, "Failed to open BPF object: %s\n", strerror(-err));
+        log_error("Failed to open BPF object: %s", strerror(-err));
         return NULL;
     }
 
     err = bpf_object__load(obj_file);
     if (err) {
-        fprintf(stderr, "Failed to load BPF object: %s\n", strerror(-err));
+        log_error("Failed to load BPF object: %s", strerror(-err));
         return NULL;
     }
 
@@ -45,13 +46,13 @@ struct ring_buffer* get_ringbuf(struct bpf_object *obj, const char* map_name, ri
 {
     int map_fd = bpf_object__find_map_fd_by_name(obj, map_name);
     if (map_fd < 0) {
-        fprintf(stderr, "Failed to find map %s: %s\n", map_name, strerror(-map_fd));
+        log_error("Failed to find map %s: %s", map_name, strerror(-map_fd));
         return NULL;
     }
 
     struct ring_buffer *rb = ring_buffer__new(map_fd, callback, NULL, NULL);
     if (libbpf_get_error(rb)) {
-        fprintf(stderr, "Failed to create ring buffer for %s: %s\n", map_name, strerror(-libbpf_get_error(rb)));
+        log_error("Failed to create ring buffer for %s: %s", map_name, strerror(-libbpf_get_error(rb)));
         return NULL;
     }
 

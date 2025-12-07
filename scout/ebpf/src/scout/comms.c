@@ -62,8 +62,10 @@ size_t _shm_write(CommID req, void* extra, size_t len) {
 RawCommsResponse _shm_read() {
     init();
     printf("Lock address: %p\n", (void*)&shared_mem_in->lock);
+    while (last_conversation_id == shared_mem_in->current_conversation_id) {
+        usleep(100000); // 100 ms
+    }
     pthread_mutex_lock(&shared_mem_in->lock);
-    // todo: maybe make it heap and not stack? (the freeing will be on the user tho)
     RawCommsResponse tmp = (RawCommsResponse){ .size = 0 };
     if (last_conversation_id != shared_mem_in->current_conversation_id) {
         tmp.size = shared_mem_in->size;

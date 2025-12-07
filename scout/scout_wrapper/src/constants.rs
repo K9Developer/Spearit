@@ -9,6 +9,7 @@ pub const MAX_CONDITION_RAW_VALUE_LENGTH: usize = 32;
 pub const MAX_CONDITIONS: usize = 8; // per rule
 pub const MAX_RULES: usize = 64;
 pub const MAX_RESPONSES: usize = 5;
+pub const MAX_EVENTS_PER_RULE: usize = 5;
 
 enum ViolationType {
     Packet = 0,

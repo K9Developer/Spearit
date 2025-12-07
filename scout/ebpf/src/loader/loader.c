@@ -1,7 +1,6 @@
 
 #define VERBOSE 1
-#define OBJECT_NETWORK_L2_PATH "build/packet_scout.bpf.o"
-#define OBJECT_NETWORK_IP_PATH "build/ip_packet_scout.bpf.o"
+#define OBJECT_NETWORK_SCOUT_PATH "packet_scout.bpf.o"
 
 #define _GNU_SOURCE
 #include <signal.h>
@@ -42,9 +41,9 @@ int handle_packet_violation(void *ctx, void *data, size_t size)
 
 struct bpf_object * load_packet_scout() {
     log_debug("Loading packet scout BPF object...");
-    struct bpf_object* obj_file = load_object(OBJECT_NETWORK_L2_PATH);
+    struct bpf_object* obj_file = load_object(OBJECT_NETWORK_SCOUT_PATH);
     if (!obj_file) {
-        log_error("Failed to load BPF object file: %s", OBJECT_NETWORK_L2_PATH);
+        log_error("Failed to load BPF object file: %s", OBJECT_NETWORK_SCOUT_PATH);
         return NULL;
     }
     log_debug("Loaded BPF object file successfully.");
@@ -76,7 +75,7 @@ int main(int argc, char **argv)
     log_info("Starting Scout eBPF loader...");
 
     libbpf_set_strict_mode(LIBBPF_STRICT_ALL);
-    libbpf_set_print(NULL);
+    libbpf_set_print(log_bpf);
 
     log_debug("Setting up signal handlers...");
     signal(SIGINT, handle_sigint);
@@ -117,6 +116,7 @@ int main(int argc, char **argv)
     detach_tc_all_interfaces();
     bpf_object__close(packet_obj_file);
     destruct_scout();
+    destruct_comms();
     log_debug("Cleanup complete, exiting now.");
 
     return 0;

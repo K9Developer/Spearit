@@ -1,26 +1,26 @@
 #pragma once
 
 typedef enum {
-    Packet_Length = 5,
-    Packet_SrcIP = 6,
-    Packet_DstIP = 7,
-    Packet_SrcPort = 8,
-    Packet_DstPort = 9,
-    Packet_Payload = 10,
-    Packet_Protocol = 11,
+    Condition_None = 0,
 
-    Process_PID = 12,
-    Process_Name = 13,
-    Process_Path = 14,
-    Process_Args = 15,
+    Packet_Length = 1,
+    Packet_SrcIP = 2,
+    Packet_DstIP = 3,
+    Packet_SrcPort = 4,
+    Packet_DstPort = 5,
+    Packet_Payload = 6,
+    Packet_Protocol = 7,
 
-    Memory_ParentPID = 16,
-    Memory_AccessType = 17,
-    Memory_AccessAddr = 18,
+    Process_PID = 8,
+    Process_Name = 9,
+    Process_Path = 10,
+    Process_Args = 11,
 
-    File_Path = 19,
+    Memory_ParentPID = 12,
+    Memory_AccessType = 13,
+    Memory_AccessAddr = 14,
 
-    User_Name = 20,
+    File_Path = 15,
 
-    Condition_None = 21
+    User_Name = 16,
 } ConditionKey;

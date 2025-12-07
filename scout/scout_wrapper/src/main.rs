@@ -1,30 +1,40 @@
-use scout_wrapper::models;
+use scout_wrapper::models::logger::logger::set_debug_enabled;
+use scout_wrapper::{models::logger, scout_wrapper::ScoutWrapper};
 use std::net::TcpStream;
 
 fn main() {
-    let mut shmm = unsafe { models::loader_shm::shared_memory::SharedMemoryManager::new() };
-    // wait for key press
-    println!("Press Enter to continue...");
+    // let mut shmm = unsafe { models::loader_shm::shared_memory::SharedMemoryManager::new() };
+    // // wait for key press
+    // println!("Press Enter to continue...");
 
-    // Create a mutable string to hold input (we just discard it here)
-    let mut buffer = String::new();
+    // // Create a mutable string to hold input (we just discard it here)
+    // let mut buffer = String::new();
 
-    // Wait until the user presses Enter
-    std::io::stdin().read_line(&mut buffer).unwrap();
+    // // Wait until the user presses Enter
+    // std::io::stdin().read_line(&mut buffer).unwrap();
 
-    unsafe {
-        shmm.connect();
-        println!("Connected to shared memory.");
-    }
+    // unsafe {
+    //     shmm.connect();
+    //     println!("Connected to shared memory.");
+    // }
 
-    // Write data BEFORE signaling readiness to avoid race condition
-    let a = vec![43; 8];
-    unsafe {
-        shmm.write(
-            models::loader_shm::shared_memory::CommID::ReqActiveRuleIds,
-            a.as_slice(),
-        );
-    }
+    // // Write data BEFORE signaling readiness to avoid race condition
+    // let a = vec![43; 8];
+    // unsafe {
+    //     shmm.write(
+    //         models::loader_shm::shared_memory::CommID::ReqActiveRuleIds,
+    //         a.as_slice(),
+    //     );
+    // }
+
+    set_debug_enabled(true);
+    let mut scout_wrapper = ScoutWrapper::new();
+    scout_wrapper.print_rules();
+    scout_wrapper.launch_ebpf(&std::path::PathBuf::from(
+        "/home/k9dev/Coding/Products/Spearit/scout/ebpf/build/loader",
+    ));
+    scout_wrapper.connect_shm_TMP();
+    // wait for key press before exiting
 }
 /*
 
