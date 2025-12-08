@@ -1,13 +1,19 @@
 use std::path::{Path, PathBuf};
 
 use crate::{
-    log_debug, log_error, log_info,
+    constants::GLOBAL_STATE,
+    log_bpf, log_debug, log_error, log_info, log_warn,
     models::{
         connection::connection::Connection,
         loader_shm::shared_memory::SharedMemoryManager,
         rules::rule::{RawRule, Rule},
     },
+    terminal_ui::start_terminal,
 };
+use std::io::BufRead;
+use std::io::BufReader;
+use std::process::{Command, Stdio};
+use std::thread;
 
 // TODO: [8 bytes to signify full message length]
 // [4 bytes to signify the goal of the message]
@@ -50,6 +56,10 @@ impl ScoutWrapper {
     }
 
     pub fn new() -> ScoutWrapper {
+        std::thread::spawn(|| {
+            start_terminal();
+        });
+
         ScoutWrapper {
             spear_head_conn: Connection::new(),
             state: ScoutWrapperState::NotConnected,
@@ -67,18 +77,41 @@ impl ScoutWrapper {
     pub fn launch_ebpf(&self, ebpf_path: &PathBuf) {
         log_info!("Launching eBPF module...");
 
-        let child = std::process::Command::new("sudo")
+        let mut child = match Command::new("sudo")
+            .arg("stdbuf")
+            .arg("-oL")
+            .arg("-eL") // THIS IS THE KEY
             .arg(ebpf_path)
             .current_dir(ebpf_path.parent().unwrap())
-            .spawn();
-
-        match child {
-            Ok(_child) => {
-                log_info!("eBPF module launched in background.");
-            }
+            .stdout(Stdio::piped())
+            .stderr(Stdio::piped())
+            .spawn()
+        {
+            Ok(c) => c,
             Err(e) => {
                 log_error!("Failed to launch eBPF module. Error: {:?}", e);
+                return;
             }
+        };
+
+        log_info!("eBPF module launched in background.");
+
+        if let Some(stdout) = child.stdout.take() {
+            thread::spawn(move || {
+                let reader = std::io::BufReader::new(stdout);
+                for line in reader.lines().flatten() {
+                    log_bpf!("{}", line);
+                }
+            });
+        }
+
+        if let Some(stderr) = child.stderr.take() {
+            thread::spawn(move || {
+                let reader = std::io::BufReader::new(stderr);
+                for line in reader.lines().flatten() {
+                    log_bpf!("{}", line);
+                }
+            });
         }
     }
 

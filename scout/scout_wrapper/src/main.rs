@@ -1,5 +1,6 @@
 use scout_wrapper::models::logger::logger::set_debug_enabled;
-use scout_wrapper::{models::logger, scout_wrapper::ScoutWrapper};
+use scout_wrapper::scout_wrapper::ScoutWrapper;
+use scout_wrapper::{log_debug, log_error, log_info, log_warn};
 use std::net::TcpStream;
 
 fn main() {
@@ -29,12 +30,14 @@ fn main() {
 
     set_debug_enabled(true);
     let mut scout_wrapper = ScoutWrapper::new();
-    scout_wrapper.print_rules();
+    // scout_wrapper.print_rules();
+
     scout_wrapper.launch_ebpf(&std::path::PathBuf::from(
         "/home/k9dev/Coding/Products/Spearit/scout/ebpf/build/loader",
     ));
-    scout_wrapper.connect_shm_TMP();
+    // scout_wrapper.connect_shm_TMP();
     // wait for key press before exiting
+    loop {}
 }
 /*
 

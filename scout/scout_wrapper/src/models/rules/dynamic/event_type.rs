@@ -1,3 +1,5 @@
+#![allow(non_camel_case_types)]
+
 // TODO: build.rs should build from file got from server (eBPF will also use) so no need to update all for each change
 #[repr(C)]
 #[derive(Clone, Copy)]

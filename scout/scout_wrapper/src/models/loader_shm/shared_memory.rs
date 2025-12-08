@@ -190,7 +190,7 @@ impl SharedMemoryManager {
         }
     }
 
-    pub unsafe fn read(&self) -> SharedComms {
+    pub unsafe fn read(&mut self) -> SharedComms {
         unsafe {
             pthread_mutex_lock(&mut (*self.shared_input).lock);
             if (*self.shared_input).current_conversation_id == self.last_conversation_id {
