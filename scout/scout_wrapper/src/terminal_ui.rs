@@ -218,6 +218,68 @@ impl ConsoleApp {
                 self.scroll[self.current_tab] = self.scroll[self.current_tab].saturating_add(1);
                 self.clamp_scroll();
             }
+            MouseEventKind::Down(_) => {
+                let (w, h) = crossterm::terminal::size().unwrap();
+                let root = Rect {
+                    x: 0,
+                    y: 0,
+                    width: w,
+                    height: h,
+                };
+
+                let chunks = Layout::default()
+                    .direction(Direction::Vertical)
+                    .constraints([
+                        Constraint::Length(3),
+                        Constraint::Min(0),
+                        Constraint::Length(3),
+                    ])
+                    .split(root);
+
+                let tabs_area = chunks[0];
+
+                let content_y = tabs_area.y + 1;
+                let inner_x_start = tabs_area.x + 1;
+                let inner_x_end = tabs_area.x + tabs_area.width - 1;
+
+                if mouse.row != content_y {
+                    return;
+                }
+                if mouse.column < inner_x_start || mouse.column >= inner_x_end {
+                    return;
+                }
+
+                let titles = ["  Wrapper  ", "  Loader  "];
+                let left_pad = " ";
+                let right_pad = " ";
+                let divider = "|";
+
+                let mut cursor_x = inner_x_start;
+
+                for (idx, title) in titles.iter().enumerate() {
+                    cursor_x = cursor_x.saturating_add(left_pad.len() as u16);
+
+                    let tab_start = cursor_x;
+
+                    cursor_x = cursor_x.saturating_add(title.len() as u16);
+
+                    cursor_x = cursor_x.saturating_add(right_pad.len() as u16);
+
+                    let tab_end = cursor_x; // exclusive
+
+                    if mouse.column >= tab_start && mouse.column < tab_end {
+                        if idx < term::NUM_TABS {
+                            self.current_tab = idx;
+                            self.clamp_scroll();
+                        }
+                        return;
+                    }
+
+                    if idx + 1 < titles.len() {
+                        cursor_x = cursor_x.saturating_add(divider.len() as u16);
+                    }
+                }
+            }
             _ => {}
         }
     }
@@ -286,7 +348,8 @@ fn render_logs(frame: &mut Frame, area: Rect, snap: &UiSnapshot) {
 
     if viewport > 0 && lines.len() > viewport {
         let max_scroll = lines.len().saturating_sub(viewport);
-        let track = viewport as u16;
+        let inside_height = area.height.saturating_sub(2);
+        let track = viewport.min(inside_height as usize) as u16;
 
         let ratio = snap.scroll[snap.current_tab] as f64 / max_scroll.max(1) as f64;
 
@@ -297,9 +360,13 @@ fn render_logs(frame: &mut Frame, area: Rect, snap: &UiSnapshot) {
         let free = track.saturating_sub(thumb);
 
         let pos = (free as f64 * ratio).round() as u16;
+        let max_y = area.y + area.height - 1;
 
         for i in 0..track {
             let y = area.y + 1 + i;
+            if y > max_y {
+                break;
+            }
             let is_thumb = i >= pos && i < pos.saturating_add(thumb);
 
             let symbol = if is_thumb { "█" } else { "│" };
