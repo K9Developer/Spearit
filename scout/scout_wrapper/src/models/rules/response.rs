@@ -1,7 +1,9 @@
 use crate::constants::MAX_RESPONSES;
+use bytemuck::{Pod, Zeroable};
 
-#[repr(C)]
-#[derive(Clone, Copy)]
+// NOTE: repr(u32) to match C enum size (int = 4 bytes)
+#[repr(u32)]
+#[derive(Clone, Copy, PartialEq, Eq)]
 pub enum ResponseType {
     AirGap = 0,
     Kill = 1,
@@ -31,7 +33,8 @@ impl Response {
 }
 
 #[repr(C)]
+#[derive(Clone, Copy)]
 pub struct ResponseList {
     pub responses: [Response; MAX_RESPONSES],
-    pub length: usize,
+    pub length: u32,
 }

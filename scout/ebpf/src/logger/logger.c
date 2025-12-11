@@ -54,20 +54,6 @@ void log_error(const char* format, ...) {
 }
 
 int log_bpf(enum libbpf_print_level level, const char *format, va_list ap) {
-    // switch (level) {
-    //     case LIBBPF_WARN:
-    //         printf(W_PRE ""); printf(W_MSG "[BPF] ");
-    //         break;
-    //     case LIBBPF_INFO:
-    //         printf(I_PRE ""); printf(I_MSG "[BPF] ");
-    //         break;
-    //     case LIBBPF_DEBUG:
-    //         return 0;
-    //     default:
-    //         printf(I_PRE ""); printf(I_MSG "[BPF] ");
-    //         break;
-    // }
-    // all as debug
     if (level == LIBBPF_DEBUG) return 0;
     printf(D_PRE ""); printf(D_MSG " [BPF] ");
     vprintf(format, ap);

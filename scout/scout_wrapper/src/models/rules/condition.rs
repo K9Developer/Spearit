@@ -4,7 +4,7 @@ use base64::prelude::*;
 use libc::c_uchar;
 use std::ffi::c_char;
 
-#[repr(C)]
+#[repr(u32)]
 #[derive(Clone, Copy)]
 pub enum Operator {
     Equals,
@@ -13,7 +13,7 @@ pub enum Operator {
     GreaterThan,
     LowerThanOrEqual,
     GreaterThanOrEqual,
-    Inside,
+    Contains,
     InPayloadAt,
 }
 
@@ -26,7 +26,7 @@ impl Operator {
             "greater_than" => Operator::GreaterThan,
             "lower_than_or_equal" => Operator::LowerThanOrEqual,
             "greater_than_or_equal" => Operator::GreaterThanOrEqual,
-            "inside" => Operator::Inside,
+            "contains" => Operator::Contains,
             "in_payload_at" => Operator::InPayloadAt,
             _ => Operator::Equals, // Default to equals if unknown
         }
@@ -82,6 +82,8 @@ impl Condition {
     }
 }
 
+#[repr(C)]
+#[derive(Clone, Copy)]
 pub struct ConditionList {
     pub conditions: [Condition; MAX_CONDITIONS],
     pub length: usize,

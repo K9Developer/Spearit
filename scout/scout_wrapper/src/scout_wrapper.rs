@@ -5,8 +5,8 @@ use crate::{
     log_bpf, log_debug, log_error, log_info, log_warn,
     models::{
         connection::connection::Connection,
-        loader_shm::shared_memory::SharedMemoryManager,
-        rules::rule::{RawRule, Rule},
+        loader_shm::shared_memory::{CommID, SharedMemoryManager},
+        rules::rule::{CompiledRule, RawRule, Rule},
     },
     terminal_ui::start_terminal,
 };
@@ -14,7 +14,6 @@ use std::io::BufRead;
 use std::io::BufReader;
 use std::process::{Command, Stdio};
 use std::thread;
-
 // TODO: [8 bytes to signify full message length]
 // [4 bytes to signify the goal of the message]
 // [4 bytes to signify field 1 length]
@@ -32,6 +31,8 @@ pub struct ScoutWrapper {
     spear_head_conn: Connection,
     state: ScoutWrapperState,
     loader_conn: SharedMemoryManager,
+
+    loader_process: Option<std::process::Child>,
 
     rules: Vec<Rule>,
 }
@@ -64,6 +65,7 @@ impl ScoutWrapper {
             spear_head_conn: Connection::new(),
             state: ScoutWrapperState::NotConnected,
             loader_conn: unsafe { SharedMemoryManager::new() },
+            loader_process: None,
             rules: ScoutWrapper::load_rules(Path::new("/home/k9dev/Coding/Products/Spearit/scout/scout_wrapper/src/dynamic/rules.json").to_path_buf()),
         }
     }
@@ -74,7 +76,7 @@ impl ScoutWrapper {
         }
     }
 
-    pub fn launch_ebpf(&self, ebpf_path: &PathBuf) {
+    pub fn launch_ebpf(&mut self, ebpf_path: &PathBuf) {
         log_info!("Launching eBPF module...");
 
         let mut child = match Command::new("sudo")
@@ -93,10 +95,11 @@ impl ScoutWrapper {
                 return;
             }
         };
+        self.loader_process = Some(child);
 
         log_info!("eBPF module launched in background.");
 
-        if let Some(stdout) = child.stdout.take() {
+        if let Some(stdout) = self.loader_process.as_mut().unwrap().stdout.take() {
             thread::spawn(move || {
                 let reader = std::io::BufReader::new(stdout);
                 for line in reader.lines().flatten() {
@@ -105,7 +108,7 @@ impl ScoutWrapper {
             });
         }
 
-        if let Some(stderr) = child.stderr.take() {
+        if let Some(stderr) = self.loader_process.as_mut().unwrap().stderr.take() {
             thread::spawn(move || {
                 let reader = std::io::BufReader::new(stderr);
                 for line in reader.lines().flatten() {
@@ -115,9 +118,85 @@ impl ScoutWrapper {
         }
     }
 
-    pub fn connect_shm_TMP(&mut self) {
+    pub fn loader_handler_tick(&mut self) {
+        unsafe {
+            let res = self.loader_conn.read(-1);
+            if res.is_none() {
+                return;
+            }
+            let res = res.unwrap();
+            let req_id = CommID::from_u32(res.request_id);
+            match req_id {
+                Some(CommID::ReqActiveRuleIds) => {
+                    log_debug!("Received active rule IDs request from loader.");
+                    let active_rule_ids: Vec<usize> = self
+                        .rules
+                        .iter()
+                        .filter(|r| r.enabled())
+                        .map(|r| r.id())
+                        .collect();
+                    self.loader_conn.write(
+                        CommID::ResActiveRuleIds,
+                        bytemuck::cast_slice(&active_rule_ids),
+                        res.current_conversation_id as i32,
+                    );
+                }
+                Some(CommID::ReqRuleData) => {
+                    let requested_rule_id = {
+                        let mut buf = [0u8; 8];
+                        buf.copy_from_slice(&res.data[0..8]);
+                        usize::from_le_bytes(buf)
+                    };
+                    log_debug!("Loader requested data for rule ID: {}", requested_rule_id);
+                    let rule_opt = self.rules.iter().find(|r| r.id() == requested_rule_id);
+                    if let Some(rule) = rule_opt {
+                        let compiled_rule = rule.compile();
+                        let mut data_bytes = vec![0u8; std::mem::size_of::<CompiledRule>()];
+
+                        unsafe {
+                            std::ptr::copy_nonoverlapping(
+                                &compiled_rule as *const CompiledRule as *const u8,
+                                data_bytes.as_mut_ptr(),
+                                data_bytes.len(),
+                            );
+                        }
+
+                        self.loader_conn.write(
+                            CommID::ResRuleData,
+                            &data_bytes,
+                            res.current_conversation_id as i32,
+                        );
+                    } else {
+                        log_warn!("Requested rule ID {} not found.", requested_rule_id);
+                        self.loader_conn.write(
+                            CommID::ResRuleData,
+                            &[],
+                            res.current_conversation_id as i32,
+                        );
+                    }
+                }
+                _ => {}
+            }
+        }
+    }
+
+    pub fn shutdown_ebpf(&mut self) {
+        log_info!("Shutting down eBPF module...");
+        if let Some(child) = &mut self.loader_process {
+            match child.kill() {
+                Ok(_) => log_info!("eBPF module shut down successfully."),
+                Err(e) => log_error!("Failed to shut down eBPF module. Error: {:?}", e),
+            }
+        } else {
+            log_warn!("No eBPF module process found to shut down.");
+        }
+    }
+
+    pub fn connect_shm(&mut self) {
+        log_info!("Connecting to loader shared memory...");
         unsafe {
             self.loader_conn.connect();
         }
+        log_debug!("Connected to loader shared memory.");
     }
 }

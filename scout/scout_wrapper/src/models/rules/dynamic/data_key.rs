@@ -1,7 +1,9 @@
 #![allow(non_camel_case_types)]
+use bytemuck::{Pod, Zeroable};
+
 // TODO: build.rs should build from file got from server (eBPF will also use) so no need to update all for each change
-#[repr(C)]
-#[derive(Clone, Copy)]
+#[repr(u32)]
+#[derive(Clone, Copy, PartialEq, Eq)]
 pub enum ConditionKey {
     Condition_None = 0,
 

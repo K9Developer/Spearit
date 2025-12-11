@@ -83,7 +83,9 @@ int main(int argc, char **argv)
 
     log_debug("Loading packet scout BPF...");
     struct bpf_object *packet_obj_file = load_packet_scout();
-    if (!packet_obj_file) return 1;
+    if (!packet_obj_file) {
+        return 1;
+    }
 
     log_debug("Setting up packet violation ring buffer...");
     struct ring_buffer *packet_rb = get_ringbuf(packet_obj_file, "packet_violations", handle_packet_violation);
@@ -92,24 +94,33 @@ int main(int argc, char **argv)
     int err;
     log_info("Initialization complete, entering main loop...");
     log_debug("Waiting for wrapper to signal readiness...");
-    wait_for_wrapper();
-    log_debug("Wrapper signaled readiness, entering main loop.");
-    bool found = false;
-    while (!found) {
-        RawCommsResponse a = _shm_read();
-        printf("Received initial message from wrapper, size: %zu\n", a.size);
-        // print data as hex
-        for (size_t i = 0; i < a.size; i++) {
-            printf("%02x ", a.data[i]);
-            found = true;
-        }
-        printf("\n");
+    while (true) {
+        if (has_wrapper_initialized()) break;
+        sleep(1);
+        if (exiting) goto cleanup;
     }
-    exit(0);
+
+    // write back to wrapper to signal readiness
+    show_ready_to_wrapper();
+
+    log_debug("Wrapper signaled readiness, entering main loop.");
+    
+    time_t last_sync = time(NULL);
+    sync_rules(); // TODO: REMOVE - TMP
+
     while (!exiting) {
+
+        time_t now = time(NULL);
+        if ((now - last_sync) * 1000 >= SYNC_INTERVAL_MS) {
+            last_sync = now;
+            // sync_rules();
+        }
+
         ring_buffer__consume(packet_rb);
         if (err = ring_buffer__consume(packet_rb) < 0) fprintf(stderr, "Error polling ring buffer (packet): %d\n", err);
     }
+
+cleanup:
 
     log_info("Exiting, cleaning up...");
     ring_buffer__free(packet_rb);

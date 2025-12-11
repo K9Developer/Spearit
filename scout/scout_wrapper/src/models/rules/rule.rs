@@ -1,6 +1,7 @@
 use crate::constants::{
     MAX_CONDITION_RAW_VALUE_LENGTH, MAX_CONDITIONS, MAX_EVENTS_PER_RULE, MAX_RESPONSES,
 };
+use crate::log_warn;
 use crate::models::rules::condition::{
     Condition, ConditionList, ConditionValue, Operator, RawCondition,
 };
@@ -63,12 +64,13 @@ pub struct Rule {
 }
 
 #[repr(C)]
-struct CompiledRule {
-    id: usize,
-    order: usize,
-    event_types: [EventType; MAX_EVENTS_PER_RULE],
-    conditions: ConditionList,
-    responses: ResponseList,
+#[derive(Clone, Copy)]
+pub struct CompiledRule {
+    pub id: usize,
+    pub order: usize,
+    pub event_types: [EventType; MAX_EVENTS_PER_RULE],
+    pub conditions: ConditionList,
+    pub responses: ResponseList,
 }
 
 impl Rule {
@@ -93,6 +95,7 @@ impl Rule {
         for (i, cond) in self.conditions.iter().take(count).enumerate() {
             conds.conditions[i] = cond.clone();
         }
+        conds.length = count;
 
         let mut reses: [Response; MAX_RESPONSES] = [Response {
             type_: ResponseType::Run,
@@ -107,7 +110,7 @@ impl Rule {
             event_types: self.event_types,
             responses: ResponseList {
                 responses: reses,
-                length: self.responses.len().min(5),
+                length: self.responses.len().min(MAX_RESPONSES) as u32,
             },
             conditions: conds,
         }

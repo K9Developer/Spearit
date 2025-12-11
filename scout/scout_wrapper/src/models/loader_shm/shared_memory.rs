@@ -2,13 +2,14 @@ use crate::constants::{
     LOADER_SHM_KEY, MAX_SHARED_DATA_SIZE, SHARED_MEMORY_PATH_LOADER, SHARED_MEMORY_PATH_WRAPPER,
     WRAPPER_SHM_KEY,
 };
-use crate::{log_debug, log_error};
+use crate::models::rules::rule::CompiledRule;
+use crate::{log_debug, log_error, log_warn};
 use libc::{
     MAP_FAILED, MAP_SHARED, O_CREAT, O_RDWR, PROT_READ, PROT_WRITE, PTHREAD_MUTEX_ROBUST,
     PTHREAD_PROCESS_SHARED, c_char, c_int, ftruncate, mmap, perror, pthread_mutex_init,
-    pthread_mutex_lock, pthread_mutex_t, pthread_mutex_unlock, pthread_mutexattr_destroy,
-    pthread_mutexattr_init, pthread_mutexattr_setpshared, pthread_mutexattr_setrobust,
-    pthread_mutexattr_t, size_t, strerror,
+    pthread_mutex_lock, pthread_mutex_t, pthread_mutex_trylock, pthread_mutex_unlock,
+    pthread_mutexattr_destroy, pthread_mutexattr_init, pthread_mutexattr_setpshared,
+    pthread_mutexattr_setrobust, pthread_mutexattr_t, size_t, strerror,
 };
 use std::ffi::{CStr, CString};
 use std::mem::offset_of;
@@ -25,19 +26,23 @@ unsafe extern "C" {
 #[repr(C)]
 #[derive(Debug, Clone, Copy)]
 pub enum CommID {
-    ReqActiveRuleIds = 0,
-    ReqRuleData = 1,
-    ResRuleViolation = 2,
-    ResActiveRuleIds = 3,
+    None = 0,
+    ReqActiveRuleIds = 1,
+    ReqRuleData = 2,
+    ResRuleViolation = 3,
+    ResActiveRuleIds = 4,
+    ResRuleData = 5,
 }
 
 impl CommID {
     pub fn from_u32(value: u32) -> Option<Self> {
         match value {
-            0 => Some(CommID::ReqActiveRuleIds),
-            1 => Some(CommID::ReqRuleData),
-            2 => Some(CommID::ResRuleViolation),
-            3 => Some(CommID::ResActiveRuleIds),
+            0 => Some(CommID::None),
+            1 => Some(CommID::ReqActiveRuleIds),
+            2 => Some(CommID::ReqRuleData),
+            3 => Some(CommID::ResRuleViolation),
+            4 => Some(CommID::ResActiveRuleIds),
+            5 => Some(CommID::ResRuleData),
             _ => None,
         }
     }
@@ -52,7 +57,7 @@ impl CommID {
 pub struct RawCommsResponse {
     pub data: [u8; MAX_SHARED_DATA_SIZE],
     pub size: usize,
-    pub current_conversation_id: usize,
+    pub current_conversation_id: i32,
     pub request_id: u32, // Using u32 to match typical C enum size
 }
 
@@ -72,7 +77,7 @@ impl Default for RawCommsResponse {
 pub struct SharedComms {
     pub key: usize,
     pub lock: pthread_mutex_t,
-    pub current_conversation_id: usize,
+    pub current_conversation_id: u32,
     pub request_id: u32,
     pub size: usize,
     pub data: [u8; MAX_SHARED_DATA_SIZE],
@@ -98,7 +103,7 @@ pub struct SharedMemoryManager {
     mutex_attr_input: pthread_mutexattr_t,
     mutex_attr_output: pthread_mutexattr_t,
 
-    last_conversation_id: usize,
+    last_conversation_id: u32,
 }
 
 impl SharedMemoryManager {
@@ -190,40 +195,52 @@ impl SharedMemoryManager {
         }
     }
 
-    pub unsafe fn read(&mut self) -> SharedComms {
+    pub unsafe fn read(&mut self, expected_conversation_id: i32) -> Option<SharedComms> {
         unsafe {
             pthread_mutex_lock(&mut (*self.shared_input).lock);
-            if (*self.shared_input).current_conversation_id == self.last_conversation_id {
-                return SharedComms::new(0);
+            let valid_id = if expected_conversation_id >= 0 {
+                ((*self.shared_input).current_conversation_id as i32) == expected_conversation_id
+            } else {
+                (*self.shared_input).current_conversation_id != self.last_conversation_id
+            };
+            if !valid_id {
+                pthread_mutex_unlock(&mut (*self.shared_input).lock);
+                return None;
             }
 
             let d = ptr::read(self.shared_input);
             pthread_mutex_unlock(&mut (*self.shared_input).lock);
             self.last_conversation_id = d.current_conversation_id;
-            d
+            Some(d)
         }
     }
 
-    pub unsafe fn write(&mut self, request_id: CommID, data: &[u8]) {
+    pub unsafe fn write(&mut self, request_id: CommID, data: &[u8], conversation_id: i32) {
         unsafe {
             pthread_mutex_lock(&mut (*self.shared_output).lock);
-
-            (*self.shared_output).current_conversation_id = self.last_conversation_id;
+            (*self.shared_output).current_conversation_id = if (conversation_id >= 0) {
+                conversation_id as u32
+            } else {
+                self.last_conversation_id + 1
+            };
             (*self.shared_output).request_id = request_id.as_u32();
             let size = data.len().min(MAX_SHARED_DATA_SIZE);
+
             (*self.shared_output).size = size;
             ptr::copy_nonoverlapping(data.as_ptr(), (*self.shared_output).data.as_mut_ptr(), size);
-            self.last_conversation_id += 1;
             pthread_mutex_unlock(&mut (*self.shared_output).lock);
+            self.last_conversation_id = (*self.shared_output).current_conversation_id;
         }
     }
 
     pub unsafe fn connect(&mut self) {
-        log_debug!("Connecting to shared memory...");
-        (*self.shared_output).key = WRAPPER_SHM_KEY;
-        while (*self.shared_input).key != LOADER_SHM_KEY {
-            thread::sleep(Duration::from_millis(200));
+        unsafe {
+            log_debug!("Connecting to shared memory...");
+            (*self.shared_output).key = WRAPPER_SHM_KEY;
+            while (*self.shared_input).key != LOADER_SHM_KEY {
+                thread::sleep(Duration::from_millis(200));
+            }
+            log_debug!("Connected to shared memory");
         }
-        log_debug!("Connected to shared memory");
     }
 }

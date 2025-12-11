@@ -27,7 +27,7 @@ impl ScoutWrapperState {
                 auto: [true; term::NUM_TABS],
                 viewport: 0,
             },
-            is_running: false,
+            is_running: true,
         }
     }
 }

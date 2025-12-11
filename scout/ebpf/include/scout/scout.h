@@ -4,9 +4,9 @@
 #include "comms.h"
 #include "report.h"
 
-void _remove_rule(unsigned int id);
+void _remove_rule(unsigned long long id);
 
-void _create_rule(unsigned int id);
+void _create_rule(unsigned long long id);
 
 /**
  * option 1 - ID already exists for us - mark as matched (0)
@@ -19,4 +19,5 @@ bool update_rules(void);
 void destruct_scout(void);
 void send_report(Report report);
 CompiledRule* get_rules(void);
-void wait_for_wrapper(void);
+bool has_wrapper_initialized(void);
+void show_ready_to_wrapper(void);

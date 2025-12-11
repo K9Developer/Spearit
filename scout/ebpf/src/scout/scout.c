@@ -8,7 +8,7 @@
 static CompiledRule RULES[MAX_RULES];
 static size_t rule_count = 0;
 
-void _remove_rule(unsigned int id) {
+void _remove_rule(unsigned long long id) {
     if (rule_count == 0) return;
     int rule_index = -1;
     for (int i = 0; i < rule_count; i++) {
@@ -22,11 +22,16 @@ void _remove_rule(unsigned int id) {
     rule_count--;
 }
 
-void _create_rule(unsigned int id) {
+
+void _create_rule(unsigned long long id) {
     if (rule_count >= MAX_RULES) return;
     RawCommsResponse response = shm_request(REQ_RULE_DATA, &id, sizeof(id));
-    if (response.size == 0) return; // failed to get response
-    memcpy(&RULES[rule_count], response.data, response.size);
+    if (response.size == 0) {
+        log_warn("Failed to create rule with ID %llu - no response data", id);
+        return;
+    } // failed to get response
+    CompiledRule* cr = (CompiledRule*) response.data;
+    memcpy(&RULES[cr->order], response.data, response.size);
     rule_count++;
 }
 
@@ -40,23 +45,29 @@ void _create_rule(unsigned int id) {
 bool update_rules() {
     RawCommsResponse response = shm_request(REQ_ACTIVE_RULE_IDS, NULL, 0);
     if (!response.size) return false;
-    unsigned int* ids = (unsigned int*)response.data;
+    unsigned long long* ids = (unsigned long long*)response.data;
     for (int ci = 0; ci < rule_count; ci++) {
         bool exists = false;
-        for (int ai = 0; ai < response.size / sizeof(unsigned int); ai++) {
-            unsigned int active_rule_id = ids[ai];
+        for (int ai = 0; ai < response.size / sizeof(unsigned long long); ai++) {
+            unsigned long long active_rule_id = ids[ai];
             if (active_rule_id == RULES[ci].id) {
                 exists = true;
                 ids[ai] = 0; // Mark this ID as matched
+                log_debug("Rule with ID %llu already exists, marking as matched", RULES[ci].id);
                 break;
             }
         }
-        if (!exists) _remove_rule(RULES[ci].id);
+        if (!exists) {
+            _remove_rule(RULES[ci].id);
+            log_debug("Removing rule with ID %llu", RULES[ci].id);
+        }
     }
 
-    for (int ai = 0; ai < response.size / sizeof(unsigned int); ai++) {
+    for (int ai = 0; ai < response.size / sizeof(unsigned long long); ai++) {
         if (ids[ai] == 0) continue;
+        log_debug("Creating new rule with ID %llu", ids[ai]);
         _create_rule(ids[ai]);
+        
     }
 
     return true;
@@ -71,9 +82,12 @@ CompiledRule* get_rules()
     return RULES;
 }
 
+bool has_wrapper_initialized(void) {
+    return _has_wrapper_initialized();
+}
 
-void wait_for_wrapper(void) {
-    _wait_for_wrapper();
+void show_ready_to_wrapper(void) {
+    _show_ready_to_wrapper();
 }
 
 void destruct_scout(void) {

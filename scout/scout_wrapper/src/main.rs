@@ -1,3 +1,4 @@
+use scout_wrapper::constants::GLOBAL_STATE;
 use scout_wrapper::models::logger::logger::set_debug_enabled;
 use scout_wrapper::scout_wrapper::ScoutWrapper;
 use scout_wrapper::{log_debug, log_error, log_info, log_warn};
@@ -30,14 +31,23 @@ fn main() {
 
     set_debug_enabled(true);
     let mut scout_wrapper = ScoutWrapper::new();
-    // scout_wrapper.print_rules();
+    scout_wrapper.print_rules();
 
     scout_wrapper.launch_ebpf(&std::path::PathBuf::from(
         "/home/k9dev/Coding/Products/Spearit/scout/ebpf/build/loader",
     ));
-    // scout_wrapper.connect_shm_TMP();
-    // wait for key press before exiting
-    loop {}
+    scout_wrapper.connect_shm();
+
+    loop {
+        if (!GLOBAL_STATE.lock().unwrap().is_running) {
+            log_warn!("Main loop detected shutdown signal. Exiting...");
+            break;
+        }
+        scout_wrapper.loader_handler_tick();
+        std::thread::sleep(std::time::Duration::from_millis(100));
+    }
+
+    scout_wrapper.shutdown_ebpf();
 }
 /*
 

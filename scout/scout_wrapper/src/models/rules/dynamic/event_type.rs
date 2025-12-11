@@ -1,29 +1,31 @@
 #![allow(non_camel_case_types)]
+use bytemuck::{Pod, Zeroable};
+
+use crate::log_error;
 
 // TODO: build.rs should build from file got from server (eBPF will also use) so no need to update all for each change
-#[repr(C)]
-#[derive(Clone, Copy)]
+#[repr(u32)]
+#[derive(Clone, Copy, PartialEq, Eq)]
 pub(crate) enum EventType {
-    Network_SendPacket = 0,
-    Network_ReceivePacket = 1,
-    Network_ReceiveConnection = 2,
-    Network_CreateConnection = 3,
+    Event_None = 0,
 
-    Process_Start = 4,
-    Process_Exit = 5,
-    Process_AccessMemory = 6,
+    Network_SendPacket = 1,
+    Network_ReceivePacket = 2,
+    Network_ReceiveConnection = 3,
+    Network_CreateConnection = 4,
 
-    File_Open = 7,
-    File_Modify = 8,
-    File_Delete = 9,
-    File_Created = 10,
+    Process_Start = 5,
+    Process_Exit = 6,
+    Process_AccessMemory = 7,
 
-    System_LoginAttempt = 11,
+    File_Open = 8,
+    File_Modify = 9,
+    File_Delete = 10,
+    File_Created = 11,
 
-    Agent_Heartbeat = 12,
-    Agent_Disconnect = 13,
-
-    Event_None = 14,
+    System_LoginAttempt = 12,
+    Agent_Heartbeat = 13,
+    Agent_Disconnect = 14,
 }
 
 impl EventType {

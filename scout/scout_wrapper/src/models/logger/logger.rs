@@ -27,7 +27,7 @@ pub fn set_debug_enabled(enabled: bool) {
 macro_rules! print_log {
     ($($arg:tt)*) => {{
         {
-            let mut app = crate::constants::GLOBAL_STATE.lock().unwrap();
+            let mut app = $crate::constants::GLOBAL_STATE.lock().unwrap();
             let line = format!($($arg)*);
             app.terminal.push_wrapper(line.replace("\t", "    "));
         }
@@ -38,7 +38,7 @@ macro_rules! print_log {
 macro_rules! print_bpf_log {
     ($($arg:tt)*) => {{
         {
-            let mut app = crate::constants::GLOBAL_STATE.lock().unwrap();
+            let mut app = $crate::constants::GLOBAL_STATE.lock().unwrap();
             let line = format!($($arg)*);
             app.terminal.push_loader(line.replace("\t", "    "));
         }
@@ -48,13 +48,13 @@ macro_rules! print_bpf_log {
 #[macro_export]
 macro_rules! log_debug {
     ($($arg:tt)*) => {{
-        if crate::models::logger::logger::DEBUG_ENABLED
+        if $crate::models::logger::logger::DEBUG_ENABLED
             .load(std::sync::atomic::Ordering::Relaxed)
         {
-            crate::print_log!(
+            $crate::print_log!(
                 "{} {}{}",
-                crate::models::logger::logger::D_PRE,
-                crate::models::logger::logger::D_MSG,
+                $crate::models::logger::logger::D_PRE,
+                $crate::models::logger::logger::D_MSG,
                 format!($($arg)*)
             );
         }
@@ -64,10 +64,10 @@ macro_rules! log_debug {
 #[macro_export]
 macro_rules! log_info {
     ($($arg:tt)*) => {{
-        crate::print_log!(
+        $crate::print_log!(
             "{} {}{}",
-            crate::models::logger::logger::I_PRE,
-            crate::models::logger::logger::I_MSG,
+            $crate::models::logger::logger::I_PRE,
+            $crate::models::logger::logger::I_MSG,
             format!($($arg)*)
         );
     }};
@@ -76,10 +76,10 @@ macro_rules! log_info {
 #[macro_export]
 macro_rules! log_warn {
     ($($arg:tt)*) => {{
-        crate::print_log!(
+        $crate::print_log!(
             "{} {}{}",
-            crate::models::logger::logger::W_PRE,
-            crate::models::logger::logger::W_MSG,
+            $crate::models::logger::logger::W_PRE,
+            $crate::models::logger::logger::W_MSG,
             format!($($arg)*)
         );
     }};
@@ -88,9 +88,9 @@ macro_rules! log_warn {
 #[macro_export]
 macro_rules! log_error {
     ($($arg:tt)*) => {{
-        crate::print_log!(
+        $crate::print_log!(
             "{} {}",
-            crate::models::logger::logger::E_PRE,
+            $crate::models::logger::logger::E_PRE,
             format!($($arg)*)
         );
     }};
@@ -99,7 +99,7 @@ macro_rules! log_error {
 #[macro_export]
 macro_rules! log_bpf {
     ($($arg:tt)*) => {{
-        crate::print_bpf_log!(
+        $crate::print_bpf_log!(
             "{}",
             format!($($arg)*)
         );

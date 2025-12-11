@@ -15,7 +15,7 @@ int shared_mem_r_fd;
 SharedComms *shared_mem_in;
 SharedComms *shared_mem_out;
 
-size_t last_conversation_id = 0; // will start from 1 so this is null
+unsigned int last_conversation_id = 0; // will start from 1 so this is null
 bool initialized = false;
 
 void init() {
@@ -55,34 +55,37 @@ size_t _shm_write(CommID req, void* extra, size_t len) {
     shared_mem_out->request_id = req;
     if (extra != NULL) memcpy(shared_mem_out->data, extra, len);
     shared_mem_out->current_conversation_id++;
+    last_conversation_id = shared_mem_out->current_conversation_id;
     pthread_mutex_unlock(&shared_mem_out->lock);
-    return shared_mem_out->current_conversation_id-1;
+    return shared_mem_out->current_conversation_id;
 }
 
-RawCommsResponse _shm_read() {
+RawCommsResponse _shm_read(int expected_conversation_id) {
     init();
-    printf("Lock address: %p\n", (void*)&shared_mem_in->lock);
-    while (last_conversation_id == shared_mem_in->current_conversation_id) {
+
+
+    while ((expected_conversation_id == -1 && last_conversation_id == shared_mem_in->current_conversation_id) ||
+           (expected_conversation_id != -1 && expected_conversation_id != shared_mem_in->current_conversation_id)
+    ) {
         usleep(100000); // 100 ms
     }
+
     pthread_mutex_lock(&shared_mem_in->lock);
     RawCommsResponse tmp = (RawCommsResponse){ .size = 0 };
-    if (last_conversation_id != shared_mem_in->current_conversation_id) {
-        tmp.size = shared_mem_in->size;
-        tmp.request_id = shared_mem_in->request_id;
-        tmp.current_conversation_id = shared_mem_in->current_conversation_id;
-        memcpy(tmp.data, shared_mem_in->data, shared_mem_in->size);
-        last_conversation_id = shared_mem_in->current_conversation_id;
-    }
+    tmp.size = shared_mem_in->size;
+    tmp.request_id = shared_mem_in->request_id;
+    tmp.current_conversation_id = shared_mem_in->current_conversation_id;
+    memcpy(tmp.data, shared_mem_in->data, shared_mem_in->size);
+    last_conversation_id = shared_mem_in->current_conversation_id;
     pthread_mutex_unlock(&shared_mem_in->lock);
     return tmp;
 }
 
 
 RawCommsResponse shm_request(CommID req, void* extra, size_t len) {
-   size_t convo_id = _shm_write(req, extra, len);
+   unsigned int convo_id = _shm_write(req, extra, len);
    usleep(100000); // 100 ms
-   RawCommsResponse res = _shm_read();
+   RawCommsResponse res = _shm_read(convo_id);
    if (res.current_conversation_id == convo_id) {
         return res;
    }
@@ -94,10 +97,14 @@ void shm_send(CommID req, void* extra, size_t len) {
    _shm_write(req, extra, len);
 }
 
-void _wait_for_wrapper(void) {
+bool _has_wrapper_initialized(void) {
     init();
-    while (shared_mem_in->key != WRAPPER_SHM_KEY) {
-        usleep(100000);
-    }
+    return shared_mem_in->key == WRAPPER_SHM_KEY;
+}
+
+void _show_ready_to_wrapper(void) {
+    init();
+    pthread_mutex_lock(&shared_mem_out->lock);
     shared_mem_out->key = LOADER_SHM_KEY;
+    pthread_mutex_unlock(&shared_mem_out->lock);
 }

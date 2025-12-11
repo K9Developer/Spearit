@@ -121,7 +121,10 @@ impl ConsoleApp {
         self.wrapper.push(line);
 
         if self.auto[0] {
-            self.clamp_scroll();
+            let len = self.wrapper.len();
+            let vp = self.viewport as usize;
+            let max = len.saturating_sub(vp) as u16;
+            self.scroll[0] = max;
         }
     }
 
@@ -130,7 +133,10 @@ impl ConsoleApp {
         self.loader.push(line);
 
         if self.auto[1] {
-            self.clamp_scroll();
+            let len = self.loader.len();
+            let vp = self.viewport as usize;
+            let max = len.saturating_sub(vp) as u16;
+            self.scroll[1] = max;
         }
     }
 
@@ -329,6 +335,8 @@ fn render_logs(frame: &mut Frame, area: Rect, snap: &UiSnapshot) {
         ""
     };
 
+    let log_count = format!(" {} logs ", lines.len());
+
     let logs = Paragraph::new(lines.clone())
         .block(
             Block::default()
@@ -340,6 +348,11 @@ fn render_logs(frame: &mut Frame, area: Rect, snap: &UiSnapshot) {
                     } else {
                         Style::default().fg(term::AUTO_COLOR).bold()
                     }),
+                )
+                .title(
+                    Line::from(log_count)
+                        .style(Style::default().fg(term::TITLE))
+                        .right_aligned(),
                 ),
         )
         .scroll((snap.scroll[snap.current_tab], 0));
@@ -465,7 +478,7 @@ pub fn start_terminal() {
 
         if last.elapsed() >= tick {
             last = Instant::now();
-            let view_h = terminal.size().unwrap().height.saturating_sub(3 + 2); // tabs + help + borders
+            let view_h = terminal.size().unwrap().height.saturating_sub(3 + 3 + 2); // tabs(3) + help(3) + log borders(2)
 
             with_app(|app| {
                 app.terminal.viewport = view_h;

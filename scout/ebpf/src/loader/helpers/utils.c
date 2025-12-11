@@ -58,3 +58,9 @@ struct ring_buffer* get_ringbuf(struct bpf_object *obj, const char* map_name, ri
 
     return rb;
 }
+
+void sync_rules()
+{
+    log_debug("Synchronizing rules...");
+    update_rules();
+}
