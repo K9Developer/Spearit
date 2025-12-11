@@ -82,19 +82,6 @@ __noinline int print_packet(PacketViolationInfo *pi)
 
     bpf_printk("Payload preview (8 bytes) (sample:%u, full:%u):", pi->payload.sample_size, pi->payload.full_size);
 
-    // char ascii[9] = {0};
-    // __u8 byte;
-    // int i;
-
-    // for (i = 0; i < 8; i++) {
-    //     if (bpf_probe_read_kernel(&byte, sizeof(byte), &pi->payload.sample_data[i]) != 0) byte = 0;
-    //     if (i % 4 == 0 && i > 0) bpf_printk(" %02x %02x %02x %02x  %s", pi->payload.sample_data[i-4], pi->payload.sample_data[i-3], pi->payload.sample_data[i-2], pi->payload.sample_data[i-1], ascii);
-    //     if (byte >= 32 && byte <= 126) ascii[i % 4] = byte;
-    //     else ascii[i % 4] = '.';
-    // }
-
-    // bpf_printk(" %02x %02x %02x %02x  %s", pi->payload.sample_data[4], pi->payload.sample_data[5], pi->payload.sample_data[6], pi->payload.sample_data[7], ascii);
-
     __u8 byte = 0;
     int i;
     char a0 = '.', a1 = '.', a2 = '.', a3 = '.';

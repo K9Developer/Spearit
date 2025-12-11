@@ -80,6 +80,7 @@ int main(int argc, char **argv)
     log_debug("Setting up signal handlers...");
     signal(SIGINT, handle_sigint);
     signal(SIGTERM, handle_sigint);
+    signal(SIGKILL, handle_sigint);
 
     log_debug("Loading packet scout BPF...");
     struct bpf_object *packet_obj_file = load_packet_scout();
@@ -88,8 +89,12 @@ int main(int argc, char **argv)
     }
 
     log_debug("Setting up packet violation ring buffer...");
-    struct ring_buffer *packet_rb = get_ringbuf(packet_obj_file, "packet_violations", handle_packet_violation);
+    struct ring_buffer *packet_rb = get_ringbuf_map(packet_obj_file, "packet_violations", handle_packet_violation);
     if (!packet_rb) return 1;
+
+    log_debug("Setting up packet rules array...");
+    int packet_rules_map_fd = get_array_map_fd(packet_obj_file, "rules");
+    if (packet_rules_map_fd < 0) return 1;
 
     int err;
     log_info("Initialization complete, entering main loop...");
@@ -105,15 +110,15 @@ int main(int argc, char **argv)
 
     log_debug("Wrapper signaled readiness, entering main loop.");
     
+    sync_rules(packet_rules_map_fd);
     time_t last_sync = time(NULL);
-    sync_rules(); // TODO: REMOVE - TMP
 
     while (!exiting) {
 
         time_t now = time(NULL);
         if ((now - last_sync) * 1000 >= SYNC_INTERVAL_MS) {
             last_sync = now;
-            // sync_rules();
+            sync_rules(packet_rules_map_fd);
         }
 
         ring_buffer__consume(packet_rb);
@@ -132,3 +137,5 @@ cleanup:
 
     return 0;
 }
+
+// TODO: Maybe add a hash to a violated packet so we can know when it was retried, since the retries are not from the same process

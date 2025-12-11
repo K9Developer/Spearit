@@ -9,6 +9,7 @@ pub struct ConsoleApp {
     pub scroll: [u16; term::NUM_TABS],
     pub auto: [bool; term::NUM_TABS],
     pub viewport: u16,
+    pub debug: bool,
 }
 
 pub struct ScoutWrapperState {
@@ -26,6 +27,7 @@ impl ScoutWrapperState {
                 scroll: [0; term::NUM_TABS],
                 auto: [true; term::NUM_TABS],
                 viewport: 0,
+                debug: true,
             },
             is_running: true,
         }
@@ -54,7 +56,7 @@ enum ViolationType {
 }
 
 // Shared Mem
-pub const MAX_SHARED_DATA_SIZE: usize = 1024;
+pub const MAX_SHARED_DATA_SIZE: usize = 4096;
 pub const SHARED_DATA_LENGTH_SIZE: usize = 8;
 pub const REQUEST_ID_SIZE: usize = 4;
 pub const SHARED_MEMORY_PATH_WRAPPER: &'static str = "scout_shared_memory_wrapper_write";

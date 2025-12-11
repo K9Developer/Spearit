@@ -6,33 +6,36 @@
 #include <string.h>
 
 static CompiledRule RULES[MAX_RULES];
-static size_t rule_count = 0;
 
 void _remove_rule(unsigned long long id) {
-    if (rule_count == 0) return;
     int rule_index = -1;
-    for (int i = 0; i < rule_count; i++) {
+    for (int i = 0; i < MAX_RULES; i++) {
         if (RULES[i].id == id) {
             rule_index = i;
             break;
         }
     }
     if (rule_index == -1) return;
-    memcpy(&RULES[rule_index], &RULES[rule_count - 1], sizeof(CompiledRule));
-    rule_count--;
+    memset(&RULES[rule_index], 0, sizeof(CompiledRule));
 }
 
 
 void _create_rule(unsigned long long id) {
-    if (rule_count >= MAX_RULES) return;
     RawCommsResponse response = shm_request(REQ_RULE_DATA, &id, sizeof(id));
     if (response.size == 0) {
         log_warn("Failed to create rule with ID %llu - no response data", id);
         return;
-    } // failed to get response
+    }
+    
+    // failed to get response
+    if (response.size != sizeof(CompiledRule)) {
+        log_warn("Failed to create rule with ID %llu - response size %zu != expected %zu", 
+                 id, response.size, sizeof(CompiledRule));
+        return;
+    }
     CompiledRule* cr = (CompiledRule*) response.data;
+    if (cr->order >= MAX_RULES) return;
     memcpy(&RULES[cr->order], response.data, response.size);
-    rule_count++;
 }
 
 /**
@@ -46,7 +49,8 @@ bool update_rules() {
     RawCommsResponse response = shm_request(REQ_ACTIVE_RULE_IDS, NULL, 0);
     if (!response.size) return false;
     unsigned long long* ids = (unsigned long long*)response.data;
-    for (int ci = 0; ci < rule_count; ci++) {
+    for (int ci = 0; ci < MAX_RULES; ci++) {
+        if (RULES[ci].id == 0) continue;
         bool exists = false;
         for (int ai = 0; ai < response.size / sizeof(unsigned long long); ai++) {
             unsigned long long active_rule_id = ids[ai];

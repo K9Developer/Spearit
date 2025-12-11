@@ -13,7 +13,7 @@
             {
                 "key": {
                     "is_key": true,
-                    "value": "packet.destination_port"
+                    "value": "packet.dst_port"
                 },
                 "operator": "equals",
                 "value": {
@@ -24,56 +24,6 @@
         ],
         "responses": [
             "kill"
-        ]
-    },
-    {
-        "id": 2,
-        "order": 2,
-        "name": "Block 2344 port connections",
-        "enabled": true,
-        "priority": 1,
-        "event_types": [
-            "network.send_packet",
-            "network.receive_packet"
-        ],
-        "conditions": [
-            {
-                "key": {
-                    "is_key": true,
-                    "value": "packet.destination_port"
-                },
-                "operator": "equals",
-                "value": {
-                    "is_key": false,
-                    "value": "6AM="
-                }
-            },
-            {
-                "key": {
-                    "is_key": true,
-                    "value": "packet.destination_port"
-                },
-                "operator": "equals",
-                "value": {
-                    "is_key": false,
-                    "value": "6AM="
-                }
-            },
-            {
-                "key": {
-                    "is_key": true,
-                    "value": "packet.destination_port"
-                },
-                "operator": "equals",
-                "value": {
-                    "is_key": false,
-                    "value": "6AM="
-                }
-            }
-        ],
-        "responses": [
-            "kill",
-            "alert"
         ]
     }
 ]

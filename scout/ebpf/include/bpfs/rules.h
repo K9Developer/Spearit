@@ -80,7 +80,6 @@ static __noinline bool packet_matches_event(EventType event, PacketViolationInfo
 __noinline bool has_packet_condition_resolved(PacketViolationInfo *pv_info, Condition *condition) {
     if (!pv_info || !condition) return false;
 
-
     // if position in payload is not specified
     if (condition->op == InPayloadAt && condition->value.raw_length == 0) return false;
 
@@ -168,17 +167,10 @@ static __u128 evaluate_packet_rules(void* rules_array_map, PacketViolationInfo *
     *has_violation = false;
     if (!rules_array_map || !pv_info) return 0;
 
-    // TODO: REMOVE
-    if (!pv_info->is_ip) return 0;
-    if (pv_info->ip.dst_port == 9999 || pv_info->ip.src_port == 9999) {
-        *has_violation = true;
-        return ((__u128)42 << (sizeof(__u64) * 8)) | (__u128)1;
-    }
-
     #pragma clang loop unroll(disable)
     for (int rule_ind = 0; rule_ind < MAX_RULES; rule_ind++) {
         CompiledRule *rule = (CompiledRule *)bpf_map_lookup_elem(rules_array_map, &rule_ind);
-        if (!rule || rule->conditions.length == 0) continue;
+        if (!rule || rule->conditions.length == 0 || rule->id == 0) continue;
 
         EventType* events = rule->event_types;
         bool rule_violated = true;

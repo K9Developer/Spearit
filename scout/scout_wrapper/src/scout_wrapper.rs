@@ -72,7 +72,7 @@ impl ScoutWrapper {
 
     pub fn print_rules(&self) {
         for rule in &self.rules {
-            log_info!("\tRule ID: {}, Name: {}", rule.id(), rule.name());
+            log_debug!("\tRule ID: {}, Name: {}", rule.id(), rule.name());
         }
     }
 
@@ -183,9 +183,23 @@ impl ScoutWrapper {
     pub fn shutdown_ebpf(&mut self) {
         log_info!("Shutting down eBPF module...");
         if let Some(child) = &mut self.loader_process {
-            match child.kill() {
-                Ok(_) => log_info!("eBPF module shut down successfully."),
-                Err(e) => log_error!("Failed to shut down eBPF module. Error: {:?}", e),
+            // SIGTERM
+            unsafe {
+                let err = libc::kill(child.id() as i32, libc::SIGINT);
+                if err != 0 {
+                    log_error!(
+                        "Failed to send SIGINT to eBPF module process. Error code: {}",
+                        err
+                    );
+                    log_warn!(
+                        "Attempting to kill the eBPF module process directly... (Might cause some resource leaks)"
+                    );
+                    match child.kill() {
+                        Ok(_) => log_info!("eBPF module killed successfully."),
+                        Err(e) => log_error!("Failed to kill eBPF module. Error: {:?}", e),
+                    }
+                }
+                log_info!("Sent SIGINT to eBPF module process.");
             }
         } else {
             log_warn!("No eBPF module process found to shut down.");

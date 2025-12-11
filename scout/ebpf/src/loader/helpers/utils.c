@@ -1,5 +1,15 @@
 #include <bpf/libbpf.h>
 #include "logger.h"
+#include <constants.h>
+#include <rule.h>
+#include "scout.h"
+
+typedef enum {
+    RULE_TYPE_PACKET,
+    RULE_TYPE_FILE,
+    RULE_TYPE_PROCESS,
+    RULE_TYPE_NONE
+} RuleType;
 
 void pid_to_name(__u32 pid, char *name_buf, size_t buf_size)
 {
@@ -42,7 +52,7 @@ struct bpf_object * load_object(const char *filename)
     return obj_file;
 }
 
-struct ring_buffer* get_ringbuf(struct bpf_object *obj, const char* map_name, ring_buffer_sample_fn callback)
+struct ring_buffer* get_ringbuf_map(struct bpf_object *obj, const char* map_name, ring_buffer_sample_fn callback)
 {
     int map_fd = bpf_object__find_map_fd_by_name(obj, map_name);
     if (map_fd < 0) {
@@ -59,8 +69,65 @@ struct ring_buffer* get_ringbuf(struct bpf_object *obj, const char* map_name, ri
     return rb;
 }
 
-void sync_rules()
+int get_array_map_fd(struct bpf_object *obj, const char* map_name)
 {
+    int map_fd = bpf_object__find_map_fd_by_name(obj, map_name);
+    if (map_fd < 0) {
+        log_error("Failed to find map %s: %s", map_name, strerror(-map_fd));
+        return -1;
+    }
+    return map_fd;
+}
+
+RuleType get_rule_type(CompiledRule* rule)
+{
+    if (!rule) return RULE_TYPE_NONE;
+    if (rule->conditions.length == 0) return RULE_TYPE_NONE;
+    if (rule->event_types[0] == Event_None) return RULE_TYPE_NONE;
+    if (rule->id == 0) return RULE_TYPE_NONE;
+
+    EventType first_event = rule->event_types[0]; // should match the rest too
+    if (first_event >= Network_SendPacket && first_event <= Network_CreateConnection) {
+        return RULE_TYPE_PACKET;
+    } else if (first_event >= File_Open && first_event <= File_Created) {
+        return RULE_TYPE_FILE;
+    } else if (first_event >= Process_Start && first_event <= Process_AccessMemory) {
+        return RULE_TYPE_PROCESS;
+    } else {
+        return RULE_TYPE_NONE;
+    }
+}
+
+void sync_rules(int packet_rules_map_fd)
+{
+
     log_debug("Synchronizing rules...");
-    update_rules();
+    update_rules(); // grab latest rules from wrapper
+    CompiledRule* rules = get_rules();
+    log_debug("Fetched latest rules from wrapper.");
+
+    for (int ri = 0; ri < MAX_RULES; ri++) {
+
+        // decide the map fd to give the rule to
+        RuleType type = get_rule_type(&rules[ri]);
+
+        int map_fd = type == RULE_TYPE_PACKET ? packet_rules_map_fd : -1;
+        if (map_fd < 0 && rules[ri].id != 0) {
+            log_warn("No valid map found for rule ID %llu at index %d, skipping", rules[ri].id, ri);
+            continue;
+        }
+
+        if (rules[ri].id == 0) {
+            int del_err = bpf_map_delete_elem(map_fd, &ri);
+            if (del_err && del_err != -2 && del_err != -9) log_error("Failed to delete rule at index %d from BPF map: %s (%d)", ri, strerror(-del_err), -del_err);
+            else if (del_err != -9) log_debug("Deleted rule at index %d from BPF map", ri);
+        } else {
+            int upd_err = bpf_map_update_elem(map_fd, &ri, &rules[ri], BPF_ANY);
+            if (upd_err) log_error("Failed to update rule ID %llu at index %d in BPF map: %s", rules[ri].id, ri, strerror(-upd_err));
+            else log_debug("Updated rule ID %llu at index %d in BPF map (%s)", rules[ri].id, ri, type == RULE_TYPE_PACKET ? "Packet" : type == RULE_TYPE_FILE ? "File" : type == RULE_TYPE_PROCESS ? "Process" : "Unknown");
+        }
+    }
+
+    log_info("Rule synchronization complete.");
+    
 }

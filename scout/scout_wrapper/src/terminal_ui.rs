@@ -1,4 +1,7 @@
-use crate::constants::{ConsoleApp, GLOBAL_STATE, ScoutWrapperState, term};
+use crate::{
+    constants::{ConsoleApp, GLOBAL_STATE, ScoutWrapperState, term},
+    log_warn,
+};
 use crossterm::{
     event::{
         self, Event, KeyCode, KeyEvent, KeyEventKind, KeyModifiers, MouseEvent, MouseEventKind,
@@ -41,16 +44,48 @@ struct UiSnapshot {
     auto: [bool; 2],
     current_tab: usize,
     viewport: u16,
+    debug: bool,
 }
 
 fn snapshot() -> UiSnapshot {
-    with_app_read(|app| UiSnapshot {
-        wrapper: app.terminal.wrapper.clone(),
-        loader: app.terminal.loader.clone(),
-        scroll: app.terminal.scroll,
-        auto: app.terminal.auto,
-        current_tab: app.terminal.current_tab,
-        viewport: app.terminal.viewport,
+    with_app_read(|app| {
+        let filter_debug = |lines: &Vec<Line<'static>>| -> Vec<Line<'static>> {
+            if app.terminal.debug {
+                lines.clone()
+            } else {
+                lines
+                    .iter()
+                    .filter(|line| {
+                        if let Some(first_span) = line.spans.first() {
+                            first_span.content.as_ref() != "[-]"
+                        } else {
+                            true
+                        }
+                    })
+                    .cloned()
+                    .collect()
+            }
+        };
+
+        let wrapper = filter_debug(&app.terminal.wrapper);
+        let loader = filter_debug(&app.terminal.loader);
+        let viewport = app.terminal.viewport as usize;
+
+        let mut scroll = app.terminal.scroll;
+        let wrapper_max = wrapper.len().saturating_sub(viewport) as u16;
+        let loader_max = loader.len().saturating_sub(viewport) as u16;
+        scroll[0] = scroll[0].min(wrapper_max);
+        scroll[1] = scroll[1].min(loader_max);
+
+        UiSnapshot {
+            wrapper,
+            loader,
+            scroll,
+            auto: app.terminal.auto,
+            current_tab: app.terminal.current_tab,
+            viewport: app.terminal.viewport,
+            debug: app.terminal.debug,
+        }
     })
 }
 
@@ -205,6 +240,11 @@ impl ConsoleApp {
 
                 self.scroll[self.current_tab] = max;
                 self.auto[self.current_tab] = true;
+            }
+
+            KeyCode::Char('d') => {
+                self.debug = !self.debug;
+                self.clamp_scroll();
             }
 
             _ => {}
@@ -402,7 +442,8 @@ fn render_logs(frame: &mut Frame, area: Rect, snap: &UiSnapshot) {
     }
 }
 
-fn render_help(frame: &mut Frame, area: Rect) {
+fn render_help(frame: &mut Frame, area: Rect, debug: bool) {
+    let debug_status = if debug { "ON" } else { "OFF" };
     let help = Paragraph::new(vec![Line::from(vec![
         Span::styled("←/→", Style::default().fg(term::HELP_KEY).bold()),
         Span::styled(" Switch  ", Style::default().fg(term::HELP_TEXT)),
@@ -411,9 +452,15 @@ fn render_help(frame: &mut Frame, area: Rect) {
         Span::styled("PgUp/PgDn", Style::default().fg(term::HELP_KEY).bold()),
         Span::styled(" Fast Scroll  ", Style::default().fg(term::HELP_TEXT)),
         Span::styled("Home/End", Style::default().fg(term::HELP_KEY).bold()),
+        Span::styled(" Top/Bottom  ", Style::default().fg(term::HELP_TEXT)),
+        Span::styled("d", Style::default().fg(term::HELP_KEY).bold()),
         Span::styled(
-            " Jump to Top/Bottom  ",
-            Style::default().fg(term::HELP_TEXT),
+            format!(" Debug [{}]  ", debug_status),
+            Style::default().fg(if debug {
+                term::AUTO_COLOR
+            } else {
+                Color::DarkGray
+            }),
         ),
         Span::styled("Ctrl+C", Style::default().fg(Color::Red).bold()),
         Span::styled(" Quit", Style::default().fg(term::HELP_TEXT)),
@@ -441,7 +488,7 @@ fn ui(frame: &mut Frame, snap: &UiSnapshot) {
 
     render_tabs(frame, chunks[0], snap);
     render_logs(frame, chunks[1], snap);
-    render_help(frame, chunks[2]);
+    render_help(frame, chunks[2], snap.debug);
 }
 
 pub fn start_terminal() {
