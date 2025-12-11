@@ -2,7 +2,7 @@
     {
         "id": 1,
         "order": 0,
-        "name": "Block 1000 port connections",
+        "name": "Block 1000 port connection",
         "enabled": true,
         "priority": 1,
         "event_types": [
@@ -23,7 +23,8 @@
             }
         ],
         "responses": [
-            "kill"
+            "kill",
+            "alert"
         ]
     }
 ]

@@ -205,21 +205,19 @@ static __u128 evaluate_packet_rules(void* rules_array_map, PacketViolationInfo *
     return 0;
 }
 
-static __always_inline int packet_response(__u64 violated_rule_order, void* rules_array_map) {
+static __always_inline unsigned int packet_response(__u64 violated_rule_order, void* rules_array_map) {
     if (!rules_array_map) return 0;
     CompiledRule* rule = (CompiledRule*)bpf_map_lookup_elem(rules_array_map, &violated_rule_order);
     if (!rule) return 0;
 
-    int res = 2;
+    ResponseType most_dramatic_response = Alert;
     for (int ri = 0; ri < rule->responses.length; ri++) {
         if (ri >= MAX_RESPONSES) break;
         Response* response = &rule->responses.responses[ri];
         if (!response) continue;
-        if (response->type == Kill || response->type == Isolate) {
-            res = 2;
-            break;
+        if (response->type < most_dramatic_response) {
+            most_dramatic_response = response->type;
         }
     }
-
-    return res;
+    return (unsigned int)most_dramatic_response;
 }

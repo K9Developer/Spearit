@@ -10,6 +10,7 @@ typedef struct {
 typedef struct {
     unsigned long long violated_rule_id;
     unsigned char violation_type;
+    unsigned int violation_response;
 
     unsigned short protocol;
     unsigned long long timestamp_ns;

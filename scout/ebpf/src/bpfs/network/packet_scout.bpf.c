@@ -177,12 +177,12 @@ int handle_packet(struct __sk_buff *skb, __u8 direction) {
             bpf_printk("Failed to reserve ringbuf space for packet violation event\n");
             return 0;
         }
+        unsigned int res = packet_response(violated_rule_order, &rules);
+        pv_info.violation_response = res;
         *ev = pv_info;
         bpf_ringbuf_submit(ev, BPF_RB_FORCE_WAKEUP);
 
-        int res = packet_response(violated_rule_order, &rules);
-        bpf_printk("Packet response action: %d", res);
-        return res;
+        return res <= Isolate ? 2 : 0;
     }
 
     return 0;
