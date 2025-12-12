@@ -10,7 +10,3 @@
 1. See logs: `sudo cat /sys/kernel/debug/tracing/trace_pipe`
 2. Build `make`
 3. Run `sudo build/loader`
-
-
-TODO: Shared functions for rule related things
-TODO: payload conditions

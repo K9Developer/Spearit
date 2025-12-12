@@ -1,4 +1,5 @@
 use std::path::{Path, PathBuf};
+use std::slice;
 
 use crate::{
     constants::GLOBAL_STATE,
@@ -6,6 +7,7 @@ use crate::{
     models::{
         connection::connection::Connection,
         loader_shm::shared_memory::{CommID, SharedMemoryManager},
+        report::report::{Report, ReportType},
         rules::rule::{CompiledRule, RawRule, Rule},
     },
     terminal_ui::start_terminal,
@@ -175,7 +177,28 @@ impl ScoutWrapper {
                         );
                     }
                 }
-                _ => {}
+                Some(CommID::ResRuleViolation) => {
+                    if res.size < std::mem::size_of::<Report>() {
+                        log_warn!("Received rule violation data is too small.");
+                        return;
+                    }
+                    let report = unsafe { std::ptr::read(res.data.as_ptr() as *const Report) };
+                    match report.type_ {
+                        // ReportType::ReportPacket => {
+                        //     log_info!("Packet violation reported");
+                        // }
+                        _ => {
+                            log_warn!(
+                                "Received unknown report type from loader: {} (Probably {:?})",
+                                report.type_ as u32,
+                                report.type_
+                            );
+                        }
+                    }
+                }
+                _ => {
+                    log_warn!("Received unknown request ID from loader: {:?}", req_id);
+                }
             }
         }
     }

@@ -44,7 +44,27 @@ struct UiSnapshot {
     auto: [bool; 2],
     current_tab: usize,
     viewport: u16,
+    term_width: u16,
     debug: bool,
+}
+
+fn calc_wrapped_lines(lines: &[Line], width: u16) -> usize {
+    let content_width = width.saturating_sub(2) as usize; // subtract borders
+    if content_width == 0 {
+        return lines.len();
+    }
+
+    lines
+        .iter()
+        .map(|line| {
+            let line_len: usize = line.spans.iter().map(|s| s.content.len()).sum();
+            if line_len == 0 {
+                1
+            } else {
+                (line_len + content_width - 1) / content_width // ceiling division
+            }
+        })
+        .sum()
 }
 
 fn snapshot() -> UiSnapshot {
@@ -70,10 +90,13 @@ fn snapshot() -> UiSnapshot {
         let wrapper = filter_debug(&app.terminal.wrapper);
         let loader = filter_debug(&app.terminal.loader);
         let viewport = app.terminal.viewport as usize;
+        let term_width = app.terminal.term_width;
 
         let mut scroll = app.terminal.scroll;
-        let wrapper_max = wrapper.len().saturating_sub(viewport) as u16;
-        let loader_max = loader.len().saturating_sub(viewport) as u16;
+        let wrapper_wrapped = calc_wrapped_lines(&wrapper, term_width);
+        let loader_wrapped = calc_wrapped_lines(&loader, term_width);
+        let wrapper_max = wrapper_wrapped.saturating_sub(viewport) as u16;
+        let loader_max = loader_wrapped.saturating_sub(viewport) as u16;
         scroll[0] = scroll[0].min(wrapper_max);
         scroll[1] = scroll[1].min(loader_max);
 
@@ -84,6 +107,7 @@ fn snapshot() -> UiSnapshot {
             auto: app.terminal.auto,
             current_tab: app.terminal.current_tab,
             viewport: app.terminal.viewport,
+            term_width,
             debug: app.terminal.debug,
         }
     })
@@ -151,14 +175,23 @@ impl ConsoleApp {
         }
     }
 
+    fn wrapped_line_count(&self, tab: usize) -> usize {
+        let lines = if tab == 0 {
+            &self.wrapper
+        } else {
+            &self.loader
+        };
+        calc_wrapped_lines(lines, self.term_width)
+    }
+
     pub fn push_wrapper(&mut self, s: String) {
         let line = build_log_line(s);
         self.wrapper.push(line);
 
         if self.auto[0] {
-            let len = self.wrapper.len();
+            let wrapped = self.wrapped_line_count(0);
             let vp = self.viewport as usize;
-            let max = len.saturating_sub(vp) as u16;
+            let max = wrapped.saturating_sub(vp) as u16;
             self.scroll[0] = max;
         }
     }
@@ -168,18 +201,18 @@ impl ConsoleApp {
         self.loader.push(line);
 
         if self.auto[1] {
-            let len = self.loader.len();
+            let wrapped = self.wrapped_line_count(1);
             let vp = self.viewport as usize;
-            let max = len.saturating_sub(vp) as u16;
+            let max = wrapped.saturating_sub(vp) as u16;
             self.scroll[1] = max;
         }
     }
 
     fn clamp_scroll(&mut self) {
-        let len = self.active_lines().len();
+        let wrapped = self.wrapped_line_count(self.current_tab);
         let vp = self.viewport as usize;
 
-        let max = len.saturating_sub(vp) as u16;
+        let max = wrapped.saturating_sub(vp) as u16;
 
         if self.scroll[self.current_tab] > max {
             self.scroll[self.current_tab] = max;
@@ -234,9 +267,9 @@ impl ConsoleApp {
             }
 
             KeyCode::End => {
-                let len = self.active_lines().len();
+                let wrapped = self.wrapped_line_count(self.current_tab);
                 let vp = self.viewport as usize;
-                let max = len.saturating_sub(vp) as u16;
+                let max = wrapped.saturating_sub(vp) as u16;
 
                 self.scroll[self.current_tab] = max;
                 self.auto[self.current_tab] = true;
@@ -395,18 +428,20 @@ fn render_logs(frame: &mut Frame, area: Rect, snap: &UiSnapshot) {
                         .right_aligned(),
                 ),
         )
+        .wrap(Wrap { trim: false })
         .scroll((snap.scroll[snap.current_tab], 0));
 
     frame.render_widget(logs, area);
 
-    if viewport > 0 && lines.len() > viewport {
-        let max_scroll = lines.len().saturating_sub(viewport);
+    let wrapped_count = calc_wrapped_lines(lines, area.width);
+    if viewport > 0 && wrapped_count > viewport {
+        let max_scroll = wrapped_count.saturating_sub(viewport);
         let inside_height = area.height.saturating_sub(2);
         let track = viewport.min(inside_height as usize) as u16;
 
         let ratio = snap.scroll[snap.current_tab] as f64 / max_scroll.max(1) as f64;
 
-        let thumb = ((viewport as f64 / lines.len() as f64) * track as f64)
+        let thumb = ((viewport as f64 / wrapped_count as f64) * track as f64)
             .max(1.0)
             .min(track as f64) as u16;
 
@@ -525,10 +560,12 @@ pub fn start_terminal() {
 
         if last.elapsed() >= tick {
             last = Instant::now();
-            let view_h = terminal.size().unwrap().height.saturating_sub(3 + 3 + 2); // tabs(3) + help(3) + log borders(2)
+            let size = terminal.size().unwrap();
+            let view_h = size.height.saturating_sub(3 + 3 + 2); // tabs(3) + help(3) + log borders(2)
 
             with_app(|app| {
                 app.terminal.viewport = view_h;
+                app.terminal.term_width = size.width;
 
                 if first_frame {
                     app.terminal.auto = [true, true];

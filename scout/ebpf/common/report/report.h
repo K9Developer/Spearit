@@ -4,8 +4,9 @@
 #include "types.h"
 
 typedef enum {
-    ReportPacket = 0,
-    ReportFile = 1
+    ReportNone = 0,
+    ReportPacket = 1,
+    ReportFile = 2
 } ReportType;
 
 typedef union {

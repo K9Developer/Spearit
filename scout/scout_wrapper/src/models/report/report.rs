@@ -1,16 +1,20 @@
 use crate::models::types::PacketViolationInfo;
 
-enum ReportType {
-    ReportPacket = 0,
-    ReportFile = 1
+#[repr(u32)]
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub enum ReportType {
+    ReportNone = 0,
+    ReportPacket = 1,
+    ReportFile = 2,
 }
 
-union ReportData {
-    packet_report: PacketViolationInfo
+#[repr(C)]
+pub union ReportData {
+    pub packet_report: PacketViolationInfo,
 }
 
 #[repr(C)]
 pub struct Report {
     pub type_: ReportType,
-    pub data: ReportData
+    pub data: ReportData,
 }

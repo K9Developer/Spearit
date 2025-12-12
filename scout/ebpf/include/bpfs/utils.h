@@ -43,56 +43,42 @@ static __noinline int extract_payload(struct __sk_buff *skb, __u32 offset, Paylo
     return 0;
 }
 
-static __noinline bool does_payload_contain(PayloadBuffer *payload, __u8 pattern[MAX_CONDITION_RAW_VALUE_LENGTH], __u64 pattern_length)
+// static __noinline bool does_payload_contain(PayloadBuffer *payload, __u8 pattern[MAX_CONDITION_RAW_VALUE_LENGTH], __u64 pattern_length)
+// {
+//     if (!payload || !pattern) return false;
+//     if (pattern_length == 0 || pattern_length > MAX_CONDITION_RAW_VALUE_LENGTH) return false;
+
+//     __u64 current_pattern_index = 0;
+
+//     #pragma clang loop unroll(disable)
+//     for (int i = 0; i < MAX_PAYLOAD_SIZE - MAX_PATTERN; i++) {
+//     bool match = true;
+
+//         #pragma clang loop unroll(disable)
+//         for (int j = 0; j < MAX_PATTERN; j++) {
+//             if (j >= pattern_length) break;
+//             if (payload->sample_data[i + j] != pattern[j]) {
+//                 match = false;
+//                 break;
+//             }
+//         }
+
+//         if (match) return true;
+//     }
+//     return false;
+// }
+
+static __noinline bool is_n_at_x_in_payload(PayloadBuffer *payload, __u8 byte, __u64 position)
 {
-    // if (!payload || !pattern) return false;
-    // if (pattern_length == 0 || pattern_length > MAX_CONDITION_RAW_VALUE_LENGTH) return false;
+    if (!payload) return false;
+    if (position + 1 > payload->sample_size) return false;
+    if (position >= MAX_PAYLOAD_SIZE) return false;
 
-    // __u64 current_pattern_index = 0;
+    unsigned char byte_at_pos = payload->sample_data[position];
+    if (byte_at_pos != byte) {
+        return false;
+    }
 
-    // #pragma clang loop unroll(full)
-    // for (__u64 i = 0; i < MAX_PAYLOAD_SIZE; i++) {
-    //     if (i >= payload->sample_size) break;
-    //     if (i + current_pattern_index >= payload->sample_size) break;
-    //     if (current_pattern_index >= pattern_length) break;
-    //     if (payload->sample_data[i] == pattern[current_pattern_index]) {
-    //         current_pattern_index++;
-    //         if (current_pattern_index == pattern_length) {
-    //             return true;
-    //         }
-    //     } else {
-    //         current_pattern_index = 0;
-    //     }
-    // }
-    // TODO: Do this function
-    return false;
-}
-
-static __noinline bool is_n_at_x_in_payload(PayloadBuffer *payload, __u8 pattern[MAX_CONDITION_RAW_VALUE_LENGTH], __u64 pattern_length, __u128 position)
-{
-    if (!payload || !pattern) return false;
-    if (pattern_length == 0 || pattern_length > MAX_CONDITION_RAW_VALUE_LENGTH) return false;
-    // Ensure access will be within bounds beforehand to help the verifier
-    if (position + pattern_length > payload->sample_size) return false;
-
-    // __u8 tmp[MAX_CONDITION_RAW_VALUE_LENGTH];
-
-    // // loops must be unrolled to avoid "program too large" errors on small bounds
-    // #pragma clang loop unroll(full)
-    // for (__u64 i = 0; i < MAX_CONDITION_RAW_VALUE_LENGTH; i++) {
-    //     if (i < position) continue;
-    //     if (i >= position + pattern_length) break;
-    //     bpf_probe_read_kernel(tmp, MAX_CONDITION_RAW_VALUE_LENGTH, &payload->sample_data[i] + i);
-
-    //     // verify tmp == pattern
-    //     for (__u64 j = 0; j < MAX_CONDITION_RAW_VALUE_LENGTH; j++) {
-    //         if (j >= pattern_length) break;
-    //         if (tmp[j] != pattern[j]) {
-    //             return false;
-    //         }
-    //     }
-    // }
-    // TODO: Do this function
     return true;
 }
 

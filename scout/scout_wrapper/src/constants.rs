@@ -9,6 +9,7 @@ pub struct ConsoleApp {
     pub scroll: [u16; term::NUM_TABS],
     pub auto: [bool; term::NUM_TABS],
     pub viewport: u16,
+    pub term_width: u16,
     pub debug: bool,
 }
 
@@ -27,6 +28,7 @@ impl ScoutWrapperState {
                 scroll: [0; term::NUM_TABS],
                 auto: [true; term::NUM_TABS],
                 viewport: 0,
+                term_width: 0,
                 debug: true,
             },
             is_running: true,

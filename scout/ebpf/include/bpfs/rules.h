@@ -101,12 +101,13 @@ __noinline bool has_packet_condition_resolved(PacketViolationInfo *pv_info, Cond
     // check payload contains condition first
     if (condition->key.raw_length == 0 && condition->key.key == Packet_Payload) {
         __u64 len = extract_condition_value_raw(raw_value2, &condition->value, pv_info);
-        return does_payload_contain(&pv_info->payload, raw_value2, len);
+        // return does_payload_contain(&pv_info->payload, raw_value2, len);
+        return false; // TODO: contains is not supported in eBPF currently
     } else if (condition->op == InPayloadAt) {
         __u64 len_key = extract_condition_value_raw(raw_value1, &condition->key, pv_info); // data to check
         __u64 position = condition_value_to_u64(&condition->value); // position in payload
         if (position >= pv_info->payload.sample_size) return false; // value length exceeds payload size
-        return is_n_at_x_in_payload(&pv_info->payload, raw_value1, len_key, position);
+        return is_n_at_x_in_payload(&pv_info->payload, raw_value1[0], position);
     }
 
     // compare keys to keys

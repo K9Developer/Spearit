@@ -30,7 +30,7 @@ int handle_packet_violation(void *ctx, void *data, size_t size)
     memcpy(&local_pi, pi, sizeof(PacketViolationInfo));
 
     pid_to_name(local_pi.process.pid, local_pi.process.name, sizeof(local_pi.process.name));
-    log_info("Packet Violation: Rule ID: %llu, Type: %u, Protocol: %u, Process: %s (PID: %u), Action: %s",
+    log_info("Packet Violation: Rule ID: %llu, Type: %u, Protocol: %u, Process: %s (PID: %u), Action: %s, Is IP: %u",
              local_pi.violated_rule_id,
              local_pi.violation_type,
              local_pi.protocol,
@@ -38,8 +38,14 @@ int handle_packet_violation(void *ctx, void *data, size_t size)
              local_pi.process.pid,
              local_pi.violation_response == (unsigned int)Kill ? "Blocked" :
              local_pi.violation_response == (unsigned int)Alert ? "Alert" :
-                "Unknown"
+                "Unknown",
+                local_pi.is_ip
             );
+
+    Report report;
+    report.type = ReportPacket;
+    report.data.packet_report = local_pi;
+    send_report(report);
 }
 
 
