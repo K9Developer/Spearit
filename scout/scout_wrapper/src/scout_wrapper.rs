@@ -184,9 +184,9 @@ impl ScoutWrapper {
                     }
                     let report = unsafe { std::ptr::read(res.data.as_ptr() as *const Report) };
                     match report.type_ {
-                        // ReportType::ReportPacket => {
-                        //     log_info!("Packet violation reported");
-                        // }
+                        ReportType::ReportPacket => {
+                            log_info!("Packet violation reported");
+                        }
                         _ => {
                             log_warn!(
                                 "Received unknown report type from loader: {} (Probably {:?})",
