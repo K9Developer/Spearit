@@ -12,6 +12,19 @@ pub enum ResponseType {
     Run = 4,
 }
 
+impl ResponseType {
+    pub fn from_u32(value: u32) -> ResponseType {
+        match value {
+            0 => ResponseType::AirGap,
+            1 => ResponseType::Kill,
+            2 => ResponseType::Isolate,
+            3 => ResponseType::Alert,
+            4 => ResponseType::Run,
+            _ => ResponseType::Alert,
+        }
+    }
+}
+
 #[repr(C)]
 #[derive(Copy, Clone)]
 pub struct Response {

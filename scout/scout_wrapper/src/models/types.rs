@@ -1,6 +1,76 @@
+use crate::{
+    constants::{MAX_PAYLOAD_SIZE, ViolationType},
+    log_error,
+    models::rules::response::ResponseType,
+};
+use serde_json::json;
 use std::fmt::Debug;
 
-use crate::{constants::MAX_PAYLOAD_SIZE, log_error};
+fn bytes_to_base64(bytes: &[u8]) -> String {
+    base64::encode(bytes)
+}
+
+fn ip_to_string(ip_info: &IpInfo, is_src: bool) -> String {
+    if ip_info.is_ipv4 != 0 {
+        let ipv4 = unsafe { ip_info.addr.ipv4 };
+        let ip_num = if is_src { ipv4.src_ip } else { ipv4.dst_ip };
+        format!(
+            "{}.{}.{}.{}",
+            ip_num & 0xff,
+            (ip_num >> 8) & 0xff,
+            (ip_num >> 16) & 0xff,
+            (ip_num >> 24) & 0xff,
+        )
+    } else {
+        let ipv6 = unsafe { ip_info.addr.ipv6 };
+        let ip_num = if is_src { ipv6.src_ip } else { ipv6.dst_ip };
+        format!(
+            "{:x}:{:x}:{:x}:{:x}:{:x}:{:x}:{:x}:{:x}",
+            ip_num[0] >> 48,
+            (ip_num[0] >> 32) & 0xffff,
+            (ip_num[0] >> 16) & 0xffff,
+            ip_num[0] & 0xffff,
+            ip_num[1] >> 48,
+            (ip_num[1] >> 32) & 0xffff,
+            (ip_num[1] >> 16) & 0xffff,
+            ip_num[1] & 0xffff,
+        )
+    }
+}
+
+fn mac_to_string(mac: &[u8; 6]) -> String {
+    format!(
+        "{:02x}:{:02x}:{:02x}:{:02x}:{:02x}:{:02x}",
+        mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]
+    )
+}
+
+fn direction_to_string(direction: u8) -> &'static str {
+    match direction {
+        0 => "inbound",
+        1 => "outbound",
+        _ => "unknown",
+    }
+}
+
+fn violation_type_to_string(violation_type: u8) -> &'static str {
+    let vt = ViolationType::from_u8(violation_type);
+    match vt {
+        ViolationType::Packet => "packet",
+        ViolationType::Connection => "connection",
+    }
+}
+
+fn violation_response_to_string(violation_response: u32) -> &'static str {
+    let vr = ResponseType::from_u32(violation_response);
+    match vr {
+        ResponseType::Alert => "alert",
+        ResponseType::Kill => "kill",
+        ResponseType::Isolate => "isolate",
+        ResponseType::AirGap => "airgap",
+        ResponseType::Run => "run",
+    }
+}
 
 #[repr(C)]
 #[derive(Clone, Copy, Debug)]
@@ -31,6 +101,44 @@ pub struct PacketViolationInfo {
     pub ip: IpInfo,
 
     pub payload: PayloadBuffer,
+}
+
+impl PacketViolationInfo {
+    pub fn to_json(&self) -> serde_json::Value {
+        let root = json!({
+            "violated_rule_id": self.violated_rule_id,
+            "violation_type": violation_type_to_string(self.violation_type),
+            "violation_response": violation_response_to_string(self.violation_response),
+            "protocol": self.protocol,
+            "timestamp_ns": self.timestamp_ns,
+            "is_connection_establishing": if self.is_connection_establishing != 0 { true } else { false },
+            "direction": direction_to_string(self.direction),
+            "process": {
+                "pid": self.process.pid,
+                "name": String::from_utf8_lossy(&self.process.name)
+                    .trim_end_matches(char::from(0))
+                    .to_string(),
+            },
+            "src_mac": mac_to_string(&self.src_mac),
+            "dst_mac": mac_to_string(&self.dst_mac),
+            "is_ip": if self.is_ip != 0 { true } else { false },
+            "ip": {
+                "src_port": self.ip.src_port,
+                "dst_port": self.ip.dst_port,
+                "is_ipv4": if self.ip.is_ipv4 != 0 { true } else { false },
+                "src_ip": ip_to_string(&self.ip, true),
+                "dst_ip": ip_to_string(&self.ip, false),
+            },
+            "payload": {
+                "full_size": self.payload.full_size,
+                "sample_size": self.payload.sample_size,
+                "data": bytes_to_base64(
+                    &self.payload.sample_data[..self.payload.sample_size as usize]
+                ),
+            },
+        });
+        root
+    }
 }
 
 impl Debug for PacketViolationInfo {
