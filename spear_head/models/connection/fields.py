@@ -3,7 +3,7 @@
 """
 
 from enum import Enum
-from dataclasses import dataclass
+from attr import dataclass
 from spear_head.constants import INT_FIELD_SIZE, SOCKET_FIELD_LENGTH_SIZE, SOCKET_FULL_LENGTH_SIZE
 
 class FieldType(Enum):
@@ -115,6 +115,35 @@ class Field:
         result.extend(self.value)
         return result
 
+    def as_str(self) -> str:
+        """
+        Get the field value as a string.
+        Returns:
+            str: The string representation of the field value."""
+        if self.type_ != FieldType.TEXT:
+            raise TypeError("Field is not of type TEXT")
+        return self.value.decode("utf-8", errors="replace")
+    
+    def as_int(self) -> int:
+        """
+        Get the field value as an integer.
+        Returns:
+            int: The integer representation of the field value.
+        """
+        if self.type_ != FieldType.INT:
+            raise TypeError("Field is not of type INT")
+        return int.from_bytes(self.value, byteorder="big", signed=True)
+    
+    def as_raw(self) -> bytes:
+        """
+        Get the field value as raw bytes.
+        Returns:
+            bytes: The raw byte representation of the field value.
+        """
+        if self.type_ != FieldType.RAW:
+            raise TypeError("Field is not of type RAW")
+        return bytes(self.value)
+
     def __str__(self) -> str:
         if self.type_ == FieldType.INT:
             int_value = int.from_bytes(self.value, byteorder="big", signed=True)
@@ -194,7 +223,7 @@ class Fields:
 
         return Fields(fields)
             
-    def consume_field(self) -> Field | None:
+    def consume_field(self, type_: FieldType | None = None) -> Field | None:
         """
         Consume and return the next Field in the collection.
 
@@ -206,6 +235,10 @@ class Fields:
 
         field = self.fields[self.seek_]
         self.seek_ += 1
+
+        if type_ is not None and field.type_ != type_:
+            return None
+
         return field
 
     def seek(self, position: int) -> None:
