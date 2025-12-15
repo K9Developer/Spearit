@@ -52,9 +52,19 @@ pub const MAX_RULES: usize = 64;
 pub const MAX_RESPONSES: usize = 5;
 pub const MAX_EVENTS_PER_RULE: usize = 5;
 
-enum ViolationType {
+pub enum ViolationType {
     Packet = 0,
     Connection = 1,
+}
+
+impl ViolationType {
+    pub fn from_u8(value: u8) -> ViolationType {
+        match value {
+            0 => ViolationType::Packet,
+            1 => ViolationType::Connection,
+            _ => ViolationType::Packet,
+        }
+    }
 }
 
 // Shared Mem
@@ -80,4 +90,8 @@ pub mod term {
     pub const SCROLL_TRACK: Color = Color::Rgb(60, 60, 60);
     pub const SCROLL_THUMB: Color = Color::Rgb(120, 140, 160);
     pub const AUTO_COLOR: Color = Color::Rgb(100, 200, 100);
+}
+
+pub mod MessageIDs {
+    pub const PACKET_REPORT: &'static str = "PKTR";
 }

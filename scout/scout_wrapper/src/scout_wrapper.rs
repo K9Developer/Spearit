@@ -1,6 +1,10 @@
 use std::path::{Path, PathBuf};
 use std::slice;
 
+use crate::constants::MessageIDs;
+use crate::models::connection::fields::FieldsBuilder;
+use crate::models::connection::message_trait::MessageTrait;
+use crate::models::connection::messages::handshake::HandshakeMessage;
 use crate::{
     constants::GLOBAL_STATE,
     log_bpf, log_debug, log_error, log_info, log_warn,
@@ -16,6 +20,7 @@ use std::io::BufRead;
 use std::io::BufReader;
 use std::process::{Command, Stdio};
 use std::thread;
+
 // TODO: [8 bytes to signify full message length]
 // [4 bytes to signify the goal of the message]
 // [4 bytes to signify field 1 length]
@@ -33,6 +38,7 @@ pub struct ScoutWrapper {
     spear_head_conn: Connection,
     state: ScoutWrapperState,
     loader_conn: SharedMemoryManager,
+    spearhead_conn: Connection,
 
     loader_process: Option<std::process::Child>,
 
@@ -67,6 +73,7 @@ impl ScoutWrapper {
             spear_head_conn: Connection::new(),
             state: ScoutWrapperState::NotConnected,
             loader_conn: unsafe { SharedMemoryManager::new() },
+            spearhead_conn: Connection::new(),
             loader_process: None,
             rules: ScoutWrapper::load_rules(Path::new("/home/k9dev/Coding/Products/Spearit/scout/scout_wrapper/src/dynamic/rules.json").to_path_buf()),
         }
@@ -75,6 +82,27 @@ impl ScoutWrapper {
     pub fn print_rules(&self) {
         for rule in &self.rules {
             log_debug!("\tRule ID: {}, Name: {}", rule.id(), rule.name());
+        }
+    }
+
+    pub fn connect_spearhead(&mut self, addr: &str) {
+        log_info!("Connecting to Spearhead at {}...", addr);
+        match self.spearhead_conn.connect(addr) {
+            Ok(_) => {
+                let succ = HandshakeMessage::handle(&mut self.spearhead_conn);
+                if succ.is_err() {
+                    log_error!(
+                        "Failed to complete handshake with Spearhead. Error: {:?}",
+                        succ.err().unwrap()
+                    );
+                    return;
+                }
+                log_info!("Connected to Spearhead successfully.");
+                self.state = ScoutWrapperState::Connected;
+            }
+            Err(e) => {
+                log_error!("Failed to connect to Spearhead. Error: {:?}", e);
+            }
         }
     }
 
@@ -185,7 +213,22 @@ impl ScoutWrapper {
                     let report = unsafe { std::ptr::read(res.data.as_ptr() as *const Report) };
                     match report.type_ {
                         ReportType::ReportPacket => {
-                            log_info!("Packet violation reported");
+                            log_info!("Packet violation reported, sending to Spearhead...");
+                            let fields = FieldsBuilder::new()
+                                .add_str(MessageIDs::PACKET_REPORT.to_string())
+                                .add_str(report.to_json().to_string())
+                                .build();
+                            match self.spearhead_conn.send_fields(fields) {
+                                Ok(_) => {
+                                    log_info!("Packet violation report sent to Spearhead.");
+                                }
+                                Err(e) => {
+                                    log_error!(
+                                        "Failed to send packet violation report to Spearhead. Error: {:?}",
+                                        e
+                                    );
+                                }
+                            }
                         }
                         _ => {
                             log_warn!(

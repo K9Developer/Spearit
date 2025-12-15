@@ -1,12 +1,13 @@
+use crate::constants::{SOCKET_FIELD_LENGTH_SIZE, SOCKET_FULL_LENGTH_SIZE};
+use std::fmt::Debug;
 use std::io;
 use std::io::{Error, ErrorKind};
-use crate::constants::{SOCKET_FIELD_LENGTH_SIZE, SOCKET_FULL_LENGTH_SIZE};
 
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Debug)]
 pub enum FieldType {
-    Int  = 0,
-    Raw  = 1,
-    Text = 2
+    Int = 0,
+    Raw = 1,
+    Text = 2,
 }
 
 impl FieldType {
@@ -15,22 +16,19 @@ impl FieldType {
             0 => FieldType::Int,
             1 => FieldType::Raw,
             2 => FieldType::Text,
-            _ => FieldType::Raw
+            _ => FieldType::Raw,
         }
     }
 }
 
 pub struct Field {
     type_: FieldType,
-    value: Vec<u8>
+    value: Vec<u8>,
 }
 
 impl Field {
     pub fn new(type_: FieldType, value: Vec<u8>) -> Field {
-        Field {
-            type_,
-            value,
-        }
+        Field { type_, value }
     }
 
     pub fn new_int(value: i64) -> Field {
@@ -55,7 +53,9 @@ impl Field {
     }
 
     pub fn to_bytes(&self) -> Vec<u8> {
-        let mut len_bytes = self.value.len().to_be_bytes().to_vec()[0..SOCKET_FIELD_LENGTH_SIZE].to_vec();
+        let mut len_bytes = (self.value.len() as u32 + 1).to_be_bytes().to_vec()
+            [0..SOCKET_FIELD_LENGTH_SIZE]
+            .to_vec();
         len_bytes.push(self.type_ as u8);
         len_bytes.extend(self.value.clone());
         len_bytes
@@ -66,27 +66,41 @@ impl Field {
     }
 }
 
+impl Debug for Field {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("Field")
+            .field("type_", &self.type_)
+            .field("value", &self.value)
+            .finish()
+    }
+}
+
 pub struct Fields {
     fields: Vec<Field>,
-    seek: usize
+    seek: usize,
 }
 
 impl Fields {
     pub fn new(fields: Vec<Field>) -> Fields {
-        Fields {
-            fields,
-            seek: 0
-        }
+        Fields { fields, seek: 0 }
     }
 
     pub fn to_bytes(&self) -> Vec<u8> {
         let mut buf: Vec<u8> = vec![0u8; SOCKET_FULL_LENGTH_SIZE];
         for field in &self.fields {
-            buf.extend(field.to_bytes())
+            buf.extend(field.to_bytes());
         }
         let total_fields_length = buf.len() - SOCKET_FULL_LENGTH_SIZE;
         let length_bytes = &total_fields_length.to_be_bytes().to_vec()[0..SOCKET_FULL_LENGTH_SIZE];
-        buf[0..SOCKET_FIELD_LENGTH_SIZE].copy_from_slice(length_bytes);
+        buf[0..SOCKET_FULL_LENGTH_SIZE].copy_from_slice(length_bytes);
+        buf
+    }
+
+    pub fn to_bytes_no_length(&self) -> Vec<u8> {
+        let mut buf: Vec<u8> = Vec::new();
+        for field in &self.fields {
+            buf.extend(field.to_bytes())
+        }
         buf
     }
 
@@ -97,17 +111,24 @@ impl Fields {
 
         while index < bytes.len() {
             // grab length
-            let raw_length: [u8; SOCKET_FIELD_LENGTH_SIZE] = bytes[index..index + SOCKET_FIELD_LENGTH_SIZE].try_into().expect("slice has wrong length");
+            let raw_length: [u8; SOCKET_FIELD_LENGTH_SIZE] = bytes
+                [index..index + SOCKET_FIELD_LENGTH_SIZE]
+                .try_into()
+                .expect("slice has wrong length");
             let field_length = u32::from_be_bytes(raw_length) as usize;
-            index += SOCKET_FIELD_LENGTH_SIZE;
-            // validate index with new length
-            if index+field_length+1 >= max_len { Err(Error::new(ErrorKind::InvalidData, "Fields length is too large"))?; }
-            let field_type = bytes[index];
-            index += 1;
 
-            let field = &bytes[index..(index+field_length)];
+            index += SOCKET_FIELD_LENGTH_SIZE;
+            if index + field_length > max_len {
+                Err(Error::new(
+                    ErrorKind::InvalidData,
+                    "Fields length is too large",
+                ))?;
+            }
+            let field_type = bytes[index];
+
+            let field = &bytes[index + 1..(index + field_length)];
             builder = builder.add(FieldType::from_u8(field_type), field.to_vec());
-            index+=field_length;
+            index += field_length;
         }
         Ok(builder.build())
     }
@@ -117,40 +138,57 @@ impl Fields {
     }
 
     pub fn consume_int_field(&mut self) -> io::Result<&Field> {
-        if self.seek >= self.fields.len() { return Err(Error::new(ErrorKind::NotSeekable, "Out of bounds")) }
+        if self.seek >= self.fields.len() {
+            return Err(Error::new(ErrorKind::NotSeekable, "Out of bounds"));
+        }
         let field = &self.fields[self.seek];
         self.seek += 1;
         match field.type_ {
-            FieldType::Int => { Ok(field) },
-            _ => Err(Error::new(ErrorKind::InvalidData, "Fields type not int"))
+            FieldType::Int => Ok(field),
+            _ => Err(Error::new(ErrorKind::InvalidData, "Fields type not int")),
         }
     }
 
     pub fn consume_text_field(&mut self) -> io::Result<&Field> {
-        if self.seek >= self.fields.len() { return Err(Error::new(ErrorKind::NotSeekable, "Out of bounds")) }
+        if self.seek >= self.fields.len() {
+            return Err(Error::new(ErrorKind::NotSeekable, "Out of bounds"));
+        }
         let field = &self.fields[self.seek];
         self.seek += 1;
         match field.type_ {
-            FieldType::Text => { Ok(field) },
-            _ => Err(Error::new(ErrorKind::InvalidData, "Fields type not text"))
+            FieldType::Text => Ok(field),
+            _ => Err(Error::new(ErrorKind::InvalidData, "Fields type not text")),
         }
     }
 
     pub fn consume_raw_field(&mut self) -> io::Result<&Field> {
-        if self.seek >= self.fields.len() { return Err(Error::new(ErrorKind::NotSeekable, "Out of bounds")) }
+        if self.seek >= self.fields.len() {
+            return Err(Error::new(ErrorKind::NotSeekable, "Out of bounds"));
+        }
         let field = &self.fields[self.seek];
         self.seek += 1;
         match field.type_ {
-            FieldType::Raw => { Ok(field) },
-            _ => Err(Error::new(ErrorKind::InvalidData, "Fields type not raw"))
+            FieldType::Raw => Ok(field),
+            _ => Err(Error::new(ErrorKind::InvalidData, "Fields type not raw")),
         }
     }
 
     pub fn consume_field(&mut self) -> io::Result<&Field> {
-        if self.seek >= self.fields.len() { return Err(Error::new(ErrorKind::NotSeekable, "Out of bounds")) }
+        if self.seek >= self.fields.len() {
+            return Err(Error::new(ErrorKind::NotSeekable, "Out of bounds"));
+        }
         let field = &self.fields[self.seek];
         self.seek += 1;
         Ok(field)
+    }
+}
+
+impl Debug for Fields {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("Fields")
+            .field("fields", &self.fields)
+            .field("seek", &self.seek)
+            .finish()
     }
 }
 
@@ -160,9 +198,7 @@ pub struct FieldsBuilder {
 
 impl FieldsBuilder {
     pub fn new() -> FieldsBuilder {
-        FieldsBuilder {
-            fields: Vec::new()
-        }
+        FieldsBuilder { fields: Vec::new() }
     }
 
     pub fn add_int(mut self, value: i64) -> Self {

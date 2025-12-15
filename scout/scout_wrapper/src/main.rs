@@ -1,8 +1,10 @@
 use scout_wrapper::constants::GLOBAL_STATE;
+use scout_wrapper::models::connection::connection::Connection;
+use scout_wrapper::models::connection::message_trait::MessageTrait;
+use scout_wrapper::models::connection::messages::handshake::HandshakeMessage;
 use scout_wrapper::models::logger::logger::set_debug_enabled;
 use scout_wrapper::scout_wrapper::ScoutWrapper;
 use scout_wrapper::{log_debug, log_error, log_info, log_warn};
-use std::net::TcpStream;
 
 fn main() {
     // let mut shmm = unsafe { models::loader_shm::shared_memory::SharedMemoryManager::new() };
@@ -31,7 +33,8 @@ fn main() {
 
     set_debug_enabled(true);
     let mut scout_wrapper = ScoutWrapper::new();
-    scout_wrapper.print_rules();
+
+    scout_wrapper.connect_spearhead("10.100.102.174:12345");
 
     scout_wrapper.launch_ebpf(&std::path::PathBuf::from(
         "/home/k9dev/Coding/Products/Spearit/scout/ebpf/build/loader",
@@ -47,7 +50,7 @@ fn main() {
         std::thread::sleep(std::time::Duration::from_millis(100));
     }
 
-    scout_wrapper.shutdown_ebpf();
+    // scout_wrapper.shutdown_ebpf();
 }
 /*
 
