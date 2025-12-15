@@ -4,7 +4,7 @@
 
 from enum import Enum
 from attr import dataclass
-from spear_head.constants import INT_FIELD_SIZE, SOCKET_FIELD_LENGTH_SIZE, SOCKET_FULL_LENGTH_SIZE
+from spear_head.constants.constants import INT_FIELD_SIZE, SOCKET_FIELD_LENGTH_SIZE, SOCKET_FULL_LENGTH_SIZE
 
 class FieldType(Enum):
     """

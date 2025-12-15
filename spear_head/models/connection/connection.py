@@ -3,7 +3,7 @@ import socket
 from typing import Callable
 from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
 from cryptography.hazmat.primitives import padding
-from spear_head.constants import AES_BLOCK_SIZE, SOCKET_FULL_LENGTH_SIZE
+from spear_head.constants.constants import AES_BLOCK_SIZE, SOCKET_FULL_LENGTH_SIZE
 from spear_head.models.connection.fields import FieldType, Fields
 
 class Connection:
