@@ -1,12 +1,12 @@
 import json
 import time
-from attr import dataclass
+from dataclasses import dataclass
 from constants.constants import SPEAR_HEAD_API_PORT, SPEAR_HEAD_WRAPPER_PORT, MessageIDs
 from models.connection.connection import Connection
 from models.connection.fields import FieldType, Fields
 from models.connection.socket_server import SocketServer, SocketServerEvent
 from models.events.event_manager import EventManager
-from models.events.types.event import EventType
+from models.events.types.event import EventKind
 
 @dataclass
 class SpearHeadConfig:
@@ -38,13 +38,13 @@ class SpearHead:
             if event_data is None or event_type is None:
                 print("Invalid event")
                 return
-            EventManager.submit_event(event_data, EventType.from_str(event_type))
+            EventManager.submit_event(event_data, EventKind.from_str(event_type))
 
     def __init__(self, config: SpearHeadConfig = DEFAULT_CONFIG) -> None:
         self.config = config
         self.wrapper_server = SocketServer(self.config.wrapper_host, self.config.wrapper_port)
         self.wrapper_server.register_callback(SocketServerEvent.MESSAGE_RECEIVED, self._on_wrapper_message)
-        
+
         self.wrapper_server.register_callback(None, lambda event, conn, fields: print(f"Wrapper Server Event: {event}, From: {conn.addr}"))
     
     def _tick(self) -> None:

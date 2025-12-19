@@ -1,21 +1,22 @@
 from enum import Enum
-from attr import dataclass
+from dataclasses import dataclass
 
 from databases.db_types.events.event_db import EventDB
 from databases.db_types.devices.device import get_or_create_device_db
+from databases.engine import SessionMaker
 from models.devices.device import Device
 
 class ViolationType(Enum):
     PACKET = 0
     CONNECTION = 1
 
-class EventType(Enum):
+class EventKind(Enum):
     PACKET = 0
 
     @staticmethod
-    def from_str(s: str) -> 'EventType':
-        if s == "packet": return EventType.PACKET
-        return EventType.PACKET
+    def from_str(s: str) -> 'EventKind':
+        if s == "packet": return EventKind.PACKET
+        return EventKind.PACKET
 
 class ViolationResponse(Enum):
     AIR_GAP = 0
@@ -39,8 +40,10 @@ class BaseEvent:
     violated_rule_id: int
     violation_type: ViolationType
     violation_response: ViolationResponse
-    event_type: EventType
+    event_type: EventKind
     device: Device
+    event_id: int | None = None
+    campaign_id: int | None = None
 
     def __init__(
         self,
@@ -48,7 +51,7 @@ class BaseEvent:
         violated_rule_id: int,
         violation_type: ViolationType,
         violation_response: ViolationResponse,
-        event_type: EventType,
+        event_type: EventKind,
         device_mac: str
     ) -> None:
         self.violated_rule_id = violated_rule_id
@@ -64,6 +67,8 @@ class BaseEvent:
             group=None,
             last_heartbeat=None
         )
+        self.event_id = None
+        self.campaign_id = None
     
     def to_db(self) -> EventDB:
         """
@@ -81,3 +86,11 @@ class BaseEvent:
             timestamp = self.timestamp_ns,
             responses_taken = None
         )
+    
+    def update_db(self):
+        event_db = self.to_db()
+        with SessionMaker() as session:
+            session.add(event_db)
+            session.commit()
+            session.refresh(event_db)
+        self.event_id = int(event_db.event_id) # type: ignore

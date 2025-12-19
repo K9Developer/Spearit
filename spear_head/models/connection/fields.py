@@ -3,7 +3,7 @@
 """
 
 from enum import Enum
-from attr import dataclass
+from dataclasses import dataclass
 from constants.constants import INT_FIELD_SIZE, SOCKET_FIELD_LENGTH_SIZE, SOCKET_FULL_LENGTH_SIZE
 
 class FieldType(Enum):

@@ -1,4 +1,4 @@
-from attr import dataclass
+from dataclasses import dataclass
 
 from databases.db_types.devices.device_db import DeviceDB
 

@@ -2,16 +2,16 @@
 import base64
 from queue import Empty, Queue
 
-from av import Packet
-from databases.engine import SessionMaker
-from models.events.types.event import BaseEvent, EventType, ViolationResponse
+from models.events.campaign_manager import CampaignManager
+from models.events.types.event import EventKind, ViolationResponse
 from models.events.types.packet_event import PacketDeviceInfo, PacketDirection, PacketEvent, PacketPayload, ProcessInfo
+from models.events.types.event_type import EventType_
 from utils.parser import protocol_entry_from_id
 
 
 class EventManager:
 
-    event_queue: Queue[PacketEvent] = Queue() # TODO: Expand with more events
+    event_queue: Queue[EventType_] = Queue()
 
     @staticmethod
     def _submit_packet_event(json_event: dict[str, str | dict[str, str]]):
@@ -48,15 +48,20 @@ class EventManager:
         )
         EventManager.event_queue.put(packet_event)
 
+    # @staticmethod
+    # def _store_event_to_db(curr_event: event_type):
+    #     db_event = curr_event.to_db()
+    #     with SessionMaker() as session:
+    #         session.add(db_event)
+    #         session.commit()
+
     @staticmethod
     def process_event():
         try:
             curr_event = EventManager.event_queue.get(block = False)
-            db_event = curr_event.to_db()
-            print(f"Storing event to DB: {db_event}")
-            with SessionMaker() as session:
-                session.add(db_event)
-                session.commit()
+            curr_event.update_db()
+            print(f"Storing event to DB: {curr_event}")
+            CampaignManager.process_event(curr_event)
 
         except Empty:
             return
@@ -65,9 +70,9 @@ class EventManager:
 
 
     @staticmethod
-    def submit_event(json_event: dict[str, str | dict[str, str]], type_: EventType) -> bool:
+    def submit_event(json_event: dict[str, str | dict[str, str]], type_: EventKind) -> bool:
         # try:
-            if type_ == EventType.PACKET:
+            if type_ == EventKind.PACKET:
                 EventManager._submit_packet_event(json_event)
             else:
                 raise Exception("Unknown event type")

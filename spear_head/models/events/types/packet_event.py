@@ -2,11 +2,12 @@ import base64
 import datetime
 from enum import Enum
 from typing import Any
-from attr import dataclass
+from dataclasses import dataclass
 
 from databases.db_types.devices.device import get_or_create_device_db
 from databases.db_types.events.event_db import EventDB
-from models.events.types.event import BaseEvent, EventType, ViolationResponse, ViolationType
+from databases.engine import SessionMaker
+from models.events.types.event import BaseEvent, EventKind, ViolationResponse, ViolationType
 
 class PacketDirection(Enum):
     INBOUND = "INBOUND"
@@ -39,7 +40,7 @@ class ProtocolInfoEntry:
     libc_name: str
     name: str
 
-@dataclass(slots=True, init=False)
+@dataclass(init=False)
 class PacketEvent(BaseEvent):
     protocol: ProtocolInfoEntry
     is_connection_establishing: bool
@@ -70,7 +71,7 @@ class PacketEvent(BaseEvent):
             violated_rule_id=violated_rule_id,
             violation_type=violation_type,
             violation_response=violation_response,
-            event_type=EventType.PACKET,
+            event_type=EventKind.PACKET,
             device_mac="ff:ff:ff:ff:ff:ff" # TODO: when the wrapper also attaches a mac
         )
 
@@ -144,3 +145,12 @@ class PacketEvent(BaseEvent):
             ),
             responses_taken = self.violation_response.name
         )
+    
+    def update_db(self):
+        event_db = self.to_db()
+        with SessionMaker() as session:
+            session.add(event_db)
+            session.commit()
+            session.refresh(event_db)
+        self.event_id = int(event_db.event_id) # type: ignore
+
