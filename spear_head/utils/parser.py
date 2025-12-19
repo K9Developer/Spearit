@@ -3,7 +3,7 @@ import json
 from models.events.types.packet_event import ProtocolInfoEntry
 from constants.constants import protocol_data
 
-def parse_protocol_entries_file(file: Path) -> dict[int, 'ProtocolInfoEntry']:
+def parse_protocol_entries_file(file: Path) -> dict[int, ProtocolInfoEntry]:
     if not file.exists(): raise FileNotFoundError()
     raw = file.read_text()
     data = json.loads(raw)
@@ -13,7 +13,7 @@ def parse_protocol_entries_file(file: Path) -> dict[int, 'ProtocolInfoEntry']:
     return entries
 
 
-def protocol_entry_from_id(id_: int) -> 'ProtocolInfoEntry':
+def protocol_entry_from_id(id_: int) -> ProtocolInfoEntry:
     global protocol_data
     
     if len(protocol_data) == 0:
