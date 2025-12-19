@@ -1,10 +1,10 @@
 import threading
 from typing import Callable
-from spear_head.models.connection.connection import Connection
+from models.connection.connection import Connection
 import socket
 from enum import Enum
-from spear_head.models.connection.fields import Fields
-from spear_head.models.connection.messages.handshake import HandshakeMessage
+from models.connection.fields import Fields
+from models.connection.messages.handshake import HandshakeMessage
 
 class SocketServerEvent(Enum):
     CONNECTION_ACCEPTED = 0
@@ -13,6 +13,8 @@ class SocketServerEvent(Enum):
     MESSAGE_SENT = 3
     CONNECTION_ESTABLISHED = 4
     CONNECTION_FAILED_TO_ESTABLISH = 5
+
+CALLBACK_TYPE = Callable[[SocketServerEvent, Connection, Fields], None]
 
 class SocketServer:
 
@@ -24,14 +26,14 @@ class SocketServer:
         self.socket_ = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.socket_.bind((host, port))
         self.socket_.listen()
-        self.callbacks = {event: [] for event in SocketServerEvent}
+        self.callbacks: dict[SocketServerEvent, list[CALLBACK_TYPE]] = {event: [] for event in SocketServerEvent}
 
     def __handle_callback(self, event: SocketServerEvent, connection: Connection, fields: Fields) -> None:
         for callback in self.callbacks[event]:
             callback(event, connection, fields)
 
     # callback will get event, connection, and the fields
-    def register_callback(self, event: SocketServerEvent | None, callback: Callable[[SocketServerEvent, Connection, Fields], None]) -> None:
+    def register_callback(self, event: SocketServerEvent | None, callback: CALLBACK_TYPE) -> None:
         if event is None:
             for ev in SocketServerEvent:
                 self.callbacks[ev].append(callback)
@@ -48,8 +50,8 @@ class SocketServer:
             except ConnectionError:
                 connection.kill()
                 self.__handle_callback(SocketServerEvent.CONNECTION_TERMINATED, connection, Fields([]))
-            except Exception as e:
-                print(f"Client loop error: {e}")
+            # except Exception as e:
+            #     print(f"Client loop error: {e}")
 
         threading.Thread(target=__client_loop, daemon=True).start()
 

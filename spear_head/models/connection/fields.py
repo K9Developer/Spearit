@@ -4,7 +4,7 @@
 
 from enum import Enum
 from attr import dataclass
-from spear_head.constants.constants import INT_FIELD_SIZE, SOCKET_FIELD_LENGTH_SIZE, SOCKET_FULL_LENGTH_SIZE
+from constants.constants import INT_FIELD_SIZE, SOCKET_FIELD_LENGTH_SIZE, SOCKET_FULL_LENGTH_SIZE
 
 class FieldType(Enum):
     """
@@ -28,7 +28,7 @@ class FieldType(Enum):
         Raises:
             ValueError: If the byte value does not correspond to any FieldType. Or invalid byte value.
         """
-        if not isinstance(value, int) or not (0 <= value <= 255):
+        if not isinstance(value, int) or not (0 <= value <= 255): # pyright: ignore[reportUnnecessaryIsInstance]
             raise ValueError(f"Value must be a byte (0-255), got: {value}")
 
         for field_type in FieldType:
@@ -207,7 +207,7 @@ class Fields:
             raise ValueError("Data length does not match the specified total length.")
         seek += SOCKET_FULL_LENGTH_SIZE
 
-        fields = []
+        fields: list[Field] = []
         while seek + SOCKET_FIELD_LENGTH_SIZE < len(data):
             field_length = int.from_bytes(data[seek:seek + SOCKET_FIELD_LENGTH_SIZE], byteorder="big")
             seek += SOCKET_FIELD_LENGTH_SIZE

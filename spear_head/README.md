@@ -1,8 +1,1 @@
-TODO: For packets, events, etc. use:
-from dataclasses import dataclass
-
-@dataclass(slots=True)
-class Packet:
-    src: str
-    dst: str
-    size: int
+TODO: Ensure in scout wrapper that the macs in each event is accurate (even packet events)

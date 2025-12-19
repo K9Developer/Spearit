@@ -2,13 +2,12 @@ import hashlib
 import os
 import struct
 import time
-from spear_head.models.connection.base_message import BaseMessage
-from spear_head.models.connection.connection import Connection
+from models.connection.base_message import BaseMessage
+from models.connection.connection import Connection
 from cryptography.hazmat.primitives.asymmetric import x25519
 from cryptography.hazmat.primitives.serialization import Encoding, PublicFormat
+from models.connection.fields import FieldType, FieldsBuilder
 
-
-from spear_head.models.connection.fields import FieldType, FieldsBuilder
 class HandshakeMessage(BaseMessage):
     
     @staticmethod
@@ -48,7 +47,7 @@ class HandshakeMessage(BaseMessage):
         if client_time_raw is None or client_time_raw.type_ != FieldType.RAW:
             return False
         client_time = struct.unpack(">Q", bytes(client_time_raw.value))[0]
-        if abs(client_time - int(time.time())) > 2:
+        if abs(client_time - int(time.time())) > 5:
             return False
         
         conn.set_timeout(None)

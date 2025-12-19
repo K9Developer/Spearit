@@ -1,13 +1,12 @@
 import json
 import time
 from attr import dataclass
-from h11 import Event
-from spear_head.constants.constants import SPEAR_HEAD_API_PORT, SPEAR_HEAD_WRAPPER_PORT, MessageIDs
-from spear_head.models.connection.connection import Connection
-from spear_head.models.connection.fields import FieldType, Fields
-from spear_head.models.connection.socket_server import SocketServer, SocketServerEvent
-from spear_head.models.events.event_manager import EventManager
-from spear_head.models.events.types.event import EventType
+from constants.constants import SPEAR_HEAD_API_PORT, SPEAR_HEAD_WRAPPER_PORT, MessageIDs
+from models.connection.connection import Connection
+from models.connection.fields import FieldType, Fields
+from models.connection.socket_server import SocketServer, SocketServerEvent
+from models.events.event_manager import EventManager
+from models.events.types.event import EventType
 
 @dataclass
 class SpearHeadConfig:
@@ -45,6 +44,8 @@ class SpearHead:
         self.config = config
         self.wrapper_server = SocketServer(self.config.wrapper_host, self.config.wrapper_port)
         self.wrapper_server.register_callback(SocketServerEvent.MESSAGE_RECEIVED, self._on_wrapper_message)
+        
+        self.wrapper_server.register_callback(None, lambda event, conn, fields: print(f"Wrapper Server Event: {event}, From: {conn.addr}"))
     
     def _tick(self) -> None:
         EventManager.process_event()

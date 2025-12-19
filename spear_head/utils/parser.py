@@ -1,8 +1,7 @@
 from pathlib import Path
 import json
-
-from spear_head.models.events.types.packet_event import ProtocolInfoEntry
-from spear_head.constants.constants import PROTOCOL_DATA
+from models.events.types.packet_event import ProtocolInfoEntry
+from constants.constants import protocol_data
 
 def parse_protocol_entries_file(file: Path) -> dict[int, 'ProtocolInfoEntry']:
     if not file.exists(): raise FileNotFoundError()
@@ -15,8 +14,8 @@ def parse_protocol_entries_file(file: Path) -> dict[int, 'ProtocolInfoEntry']:
 
 
 def protocol_entry_from_id(id_: int) -> 'ProtocolInfoEntry':
-    global PROTOCOL_DATA
+    global protocol_data
     
-    if len(PROTOCOL_DATA) == 0:
-        PROTOCOL_DATA = parse_protocol_entries_file(Path(r"spear_head\constants\protocol_numbers.json"))
-    return PROTOCOL_DATA.get(id_, ProtocolInfoEntry("N/A", "N/A"))
+    if len(protocol_data) == 0:
+        protocol_data = parse_protocol_entries_file(Path(r"constants\protocol_numbers.json"))
+    return protocol_data.get(id_, ProtocolInfoEntry("N/A", "N/A"))
