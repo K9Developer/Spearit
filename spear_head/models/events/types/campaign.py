@@ -89,6 +89,12 @@ class Campaign:
                 session.commit()
                 session.refresh(campaign_db)
             campaign_id = campaign_db.campaign_id
+        else:
+            with SessionMaker() as session:
+                campaign_db = self.to_db()
+                campaign_db.campaign_id = campaign_id
+                session.merge(campaign_db)
+                session.commit()
 
         self.campaign_id = campaign_id # type: ignore
 
@@ -141,7 +147,7 @@ class Campaign:
         return f"""Campaign(
         involved_device_ids={self.involved_device_ids},
         events={[
-            str(event) for event in self.events
+            repr(event) for event in self.events
         ]}
         )"""
     

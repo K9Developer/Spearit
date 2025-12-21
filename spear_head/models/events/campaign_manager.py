@@ -1,10 +1,11 @@
 from datetime import datetime
+from databases.engine import SessionMaker
 from models.events.types.packet_event import PacketEvent
 from models.events.types.event import EventKind
 from models.events.types.campaign import Campaign
 from models.events.types.event_type import EventType_
-from constants.constants import CAMPAIGN_MATCH_SCORE_THRESHOLD, CAMPAIGN_ONGOING_TIMEOUT_NS
-from utils.packet_event import same_conversation_score
+from constants.constants import CAMPAIGN_MATCH_SCORE_THRESHOLD, CAMPAIGN_ONGOING_TIMEOUT
+from utils.packet_event import fix_event_process, same_conversation_score
 
 # TODO: Merge campaigns
 class CampaignManager:
@@ -65,7 +66,8 @@ class CampaignManager:
 
         for camp_index, campaign in enumerate(CampaignManager.ongoing_campaigns):
 
-            if abs(datetime.now().timestamp() * 1e9 - campaign.last_updated.timestamp() * 1e9) > CAMPAIGN_ONGOING_TIMEOUT_NS:
+            print("Campain last updated seconds ago:",abs(datetime.now().timestamp() - campaign.last_updated.timestamp()))
+            if abs(datetime.now().timestamp() - campaign.last_updated.timestamp()) > CAMPAIGN_ONGOING_TIMEOUT:
                 print("Closing campaign due to timeout:", campaign.name)
                 campaign.close_campaign()
                 CampaignManager.ongoing_campaigns.pop(camp_index)
@@ -77,6 +79,15 @@ class CampaignManager:
 
         if best_campaign is not None and best_score * 100 >= CAMPAIGN_MATCH_SCORE_THRESHOLD:
             print("Adding event to existing campaign with score:", best_score)
+            changed_events = fix_event_process(best_campaign, event)
+            for changed_event in changed_events:
+                if changed_event.event_id is None: continue
+                event_db = event.to_db()
+                event_db.event_id = event.event_id # type: ignore
+                with SessionMaker() as session:
+                    session.merge(event_db)
+                    session.commit()
+
             best_campaign.add_event(event)
             best_campaign.update_db()
         else:

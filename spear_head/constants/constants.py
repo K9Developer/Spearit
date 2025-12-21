@@ -19,4 +19,9 @@ class MessageIDs:
 CAMPAIGN_MATCH_SCORE_THRESHOLD = 70
 TCP_FLOW_TIMEOUT_NS = 2 * 60 * 1000 * 1000 * 1000  # 2 minutes in nanoseconds
 # CAMPAIGN_ONGOING_TIMEOUT_NS = 30 * 60 * 1000 * 1000 * 1000  # 30 minutes in nanoseconds
-CAMPAIGN_ONGOING_TIMEOUT_NS = 30 * 1000 * 1000 * 1000  # 30 seconds in nanoseconds
+CAMPAIGN_ONGOING_TIMEOUT = 10  # 10 seconds
+
+AI_MODEL = 'llama3.1'
+AI_TEMPERATURE = 0.5
+AI_TOP_P = 0.9
+AI_CONTEXT_SIZE = 16384

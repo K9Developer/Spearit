@@ -21,7 +21,14 @@ class SpearHead:
     wrapper_server: SocketServer
     config: SpearHeadConfig
 
-    def _on_wrapper_message(self, event: SocketServerEvent, connection: Connection, fields: Fields) -> None:
+    def __init__(self, config: SpearHeadConfig = DEFAULT_CONFIG) -> None:
+        self.config = config
+        self.wrapper_server = SocketServer(self.config.wrapper_host, self.config.wrapper_port)
+        self.wrapper_server.register_callback(SocketServerEvent.MESSAGE_RECEIVED, self._on_wrapper_message)
+
+        self.wrapper_server.register_callback(None, lambda event, conn, fields: print(f"Wrapper Server Event: {event}, From: {conn.addr}"))
+
+    def _on_wrapper_message(self, event: SocketServerEvent, _: Connection, fields: Fields) -> None:
         if event != SocketServerEvent.MESSAGE_RECEIVED: return
         if len(fields.fields) == 0: return
         msg_id = fields.consume_field(FieldType.TEXT)
@@ -39,13 +46,6 @@ class SpearHead:
                 print("Invalid event")
                 return
             EventManager.submit_event(event_data, EventKind.from_str(event_type))
-
-    def __init__(self, config: SpearHeadConfig = DEFAULT_CONFIG) -> None:
-        self.config = config
-        self.wrapper_server = SocketServer(self.config.wrapper_host, self.config.wrapper_port)
-        self.wrapper_server.register_callback(SocketServerEvent.MESSAGE_RECEIVED, self._on_wrapper_message)
-
-        self.wrapper_server.register_callback(None, lambda event, conn, fields: print(f"Wrapper Server Event: {event}, From: {conn.addr}"))
     
     def _tick(self) -> None:
         EventManager.process_event()

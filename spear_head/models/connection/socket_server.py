@@ -23,6 +23,7 @@ class SocketServer:
 
     def __init__(self, host: str, port: int) -> None:
         self.clients = []
+        print(f"Starting Socket Server on {host}:{port}...")
         self.socket_ = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.socket_.bind((host, port))
         self.socket_.listen()

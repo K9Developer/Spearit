@@ -1,77 +1,105 @@
-from google import genai
-from dotenv import load_dotenv
-import os
-import json
+from utils.ai_manager import AIManager
 
-load_dotenv()
+SYSTEM_PROMPT = """You are an automated security campaign analysis engine.
 
+You analyze a single security campaign based solely on the provided low-level events.
+Your task is to summarize what actually occurred, extracting and consolidating all durable, meaningful technical details.
+All the data you get is the whole context you have; do NOT assume any external knowledge.
+For example, if you see connection attempts, dont assume they were successful unless an event hints so.
+Make sure to state whether an attempted action was successful or not (blocked or not), etc. The user needs to know whats the result of the activity.
 
-def generate_campaign_details(campaign: 'Campaign') -> tuple[str, str, str]:
-    try:
-        api_key = os.getenv("GEMINI_API_KEY")
-        if api_key is None:
-            print("Error: GEMINI_API_KEY not set in environment variables.")
-            return ("Unnamed Campaign", "No description available.", "LOW")
-        
-        client = genai.Client(api_key=api_key)
+STRICT RULES:
+- Output ONLY valid JSON. No markdown, no code blocks, no extra text.
+- Do NOT invent threats, intent, or risk.
+- Routine activity is LOW severity by default.
+- Use MEDIUM only with concrete suspicious indicators.
+- Use HIGH only with explicit evidence of compromise or exfiltration.
+- Avoid speculative language entirely.
 
-        response = client.models.generate_content(
-            model="gemini-2.0-flash-lite",
-            contents=[
-            {
-                "role": "model",
-                "parts": [{
-                    "text": """You are an automated security campaign analysis engine.
+SEVERITY ENFORCEMENT:
+- Severity MUST be LOW unless there is explicit, unambiguous evidence of malicious activity.
+- The following MUST NOT increase severity:
+  - Multiple connection attempts
+  - Repeated identical payloads or banners
+  - Use of administrative or networking tools (e.g., ssh, scp, curl)
+  - Multiple local processes generating similar network traffic
+  - Unknown or missing process names
+  - Service banners, protocol handshakes, or version disclosures
+- MEDIUM severity is allowed ONLY if the payload or metadata explicitly shows:
+  - Known malicious infrastructure
+  - Unauthorized lateral movement with confirmed privilege misuse
+  - Authentication failures indicating brute-force activity
+- HIGH severity is allowed ONLY if there is explicit evidence of:
+  - Exploitation
+  - Data exfiltration
+  - Command execution
+  - Confirmed system compromise
 
-You will receive data describing a single security campaign.
-The campaign contains multiple low-level events (network, process, file, or alert events).
-Your task is to generate a concise, human-readable campaign summary.
+DATA PRIORITIZATION RULES:
+- Prefer durable identifiers over transient ones.
+- DO NOT include:
+  - Process IDs
+  - Ephemeral source ports
+  - Timestamps
+  - Duplicate event counts
+- DO include when available:
+  - Application-layer protocol (not just transport protocol)
+  - Protocol version
+  - Software name and version
+  - Operating system and distribution details
+  - Service role when explicitly identified
+- If payload data identifies an application protocol (e.g., SSH, HTTP, SMTP), use that protocol name instead of generic TCP/UDP wording.
+- Consolidate repeated or identical payloads into a single coherent description.
 
-Rules you MUST follow:
-- You MUST return ONLY valid JSON.
-- Do NOT include markdown, comments, explanations, or extra text.
-- Do NOT wrap the JSON in code blocks.
-- The JSON MUST contain exactly these keys:
-  - "name": a short descriptive campaign name (string, max 10 words)
-  - "description": a concise technical summary of the campaign (string, 1-3 sentences)
-  - "severity": one of "LOW", "MEDIUM", or "HIGH", based on the overall risk level of the campaign.
-- If the campaign intent is unclear, choose a neutral, non-alarmist name and description.
-- Do NOT invent events or facts not present in the input.
-- Do NOT include confidence scores or metadata.
+PAYLOAD ANALYSIS:
+- Treat payload content as authoritative.
+- Parse payloads carefully to extract ALL identifiable information, including:
+  - Application protocol names
+  - Protocol versions
+  - Software implementations
+  - Operating system or distribution identifiers
+  - Build or package identifiers
+- If the payload clearly identifies an application protocol, the campaign name MUST reflect that protocol.
+- Attempt to find inconsistencies, weird, or out-of-place details in payloads that may indicate misconfiguration or potential compromise.
 
-Output format (exact structure required):
+WRITING STYLE:
+- Use clear, simple language suitable for system administrators.
+- Be technical only where it adds clarity.
+- Focus on what happened, which systems were involved, and what software was identified.
+- Do not repeat the same fact multiple times.
+- Refer to devices ONLY by IP address, not by numbers, etc.
+- Mention destination ports only if they are service-identifying or non-ephemeral.
+- Quote the payload content where needed
+- Do not refer to device like so: "device 1", even if later you specify the IP address. Use the IP address only.
+
+Required JSON structure (exact keys only):
 {
-  "name": "<string>",
-  "description": "<string>",
+  "name": "<short neutral name reflecting the identified application protocol, do not include details like IPs, processes, etc. max 10 words>",
+  "description": "<single concise paragraph summarizing the activity using durable identifiers and extracted payload information>",
   "severity": "<LOW|MEDIUM|HIGH>"
 }
 """
-                }]
-            },
-            {
-                "role": "user",
-                "parts": [{
-                    "text": repr(campaign)
-                }]
-            }
-        ]
-        )
 
+def generate_campaign_details(campaign: 'Campaign') -> tuple[str, str, str]:
+    """
+    Generate a campaign name, description, and severity using a language model.
+    Args:
+        campaign (Campaign): The campaign instance for which to generate details.
+    Returns:
+        tuple[str, str, str]: A tuple containing the generated name, description, and severity.
+    """
+
+    res = AIManager.get_json_response(SYSTEM_PROMPT, repr(campaign))
+    print("AIManager response for campaign details:", res)
+    if res is not None:
         try:
-            content = response.text
-            if not content:
-                print("Error: Empty response from Gemini API.")
-                return ("Unnamed Campaign", "No description available.", "LOW")
-            data = json.loads(content)
-            name = data.get("name", "Unnamed Campaign")
-            description = data.get("description", "No description available.")
-            severity = data.get("severity", "LOW")
-            if severity not in {"LOW", "MEDIUM", "HIGH"}:
+            name = res["name"]
+            description = res["description"]
+            severity = res["severity"].upper()
+            if severity not in ["LOW", "MEDIUM", "HIGH"]:
                 severity = "LOW"
             return (name, description, severity)
-        except (json.JSONDecodeError, KeyError) as e:
-            print("Error parsing response from Gemini API:", e)
-            return ("Unnamed Campaign", "No description available.", "LOW")
-    except Exception as e:
-        print("Error generating campaign details:", e)
-        return ("Unnamed Campaign", "No description available.", "LOW")
+        except KeyError:
+            print("generate_campaign_details: Missing keys in AI response.")
+
+    return ("Unnamed Campaign", "No description available.", "medium")

@@ -102,6 +102,21 @@ class PacketEvent(BaseEvent):
             f"establishing={self.is_connection_establishing}"
         )
     
+    def __repr__(self) -> str:
+        return (
+            f"PacketEvent(timestamp_ns={self.timestamp_ns}, "
+            f"violated_rule_id={self.violated_rule_id}, "
+            f"violation_type={self.violation_type}, "
+            f"violation_response={self.violation_response}, "
+            f"protocol={self.protocol}, "
+            f"is_connection_establishing={self.is_connection_establishing}, "
+            f"direction={self.direction}, "
+            f"process={self.process}, "
+            f"source={self.source}, "
+            f"dest={self.dest}, "
+            f"payload=\"{bytes(self.payload.data).decode('utf-8', errors='ignore')}\""
+        )
+    
     def to_json(self) -> dict[str, Any]:
         return {
             "protocol": self.protocol.name,
