@@ -15,6 +15,7 @@ protocol_data: dict[int, ProtocolInfoEntry] = dict()
 
 class MessageIDs:
     REPORT = "RPRT"
+    HEARTBEAT = "HRTB"
 
 CAMPAIGN_MATCH_SCORE_THRESHOLD = 70
 TCP_FLOW_TIMEOUT_NS = 2 * 60 * 1000 * 1000 * 1000  # 2 minutes in nanoseconds
