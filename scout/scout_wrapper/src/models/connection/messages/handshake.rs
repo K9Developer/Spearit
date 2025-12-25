@@ -72,7 +72,7 @@ impl MessageTrait for HandshakeMessage {
             .unwrap()
             .as_secs();
         let diff = now_secs as i64 - restored_ts as i64;
-        if diff > 2 {
+        if diff > 5 {
             log_error!("Server timestamp too far off! Diff: {} seconds", diff);
             return Err(io::Error::new(
                 io::ErrorKind::Other,

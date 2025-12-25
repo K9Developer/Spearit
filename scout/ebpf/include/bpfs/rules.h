@@ -122,6 +122,7 @@ __noinline bool has_packet_condition_resolved(PacketViolationInfo *pv_info, Cond
         }
         if (condition->key.key == Packet_SrcPort && condition->value.key == Packet_DstPort) return pv_info->ip.src_port == pv_info->ip.dst_port;
         if (condition->key.key == Packet_DstPort && condition->value.key == Packet_SrcPort) return pv_info->ip.dst_port == pv_info->ip.src_port;
+        if (condition->key.key == Packet_IsConnectionEstablishing && condition->value.key == Packet_IsConnectionEstablishing) return true;
         return false; // even if they are equal its a mistake to compare non matching keys
     }
 
@@ -156,6 +157,8 @@ __noinline bool has_packet_condition_resolved(PacketViolationInfo *pv_info, Cond
             return evaluate_op_num((__u128)pv_info->ip.dst_port, condition->op, (__u128)*(u16*)condition->value.raw);
         case Packet_Protocol:
             return evaluate_op_num((__u128)pv_info->protocol, condition->op, (__u128)*(u16*)condition->value.raw);
+        case Packet_IsConnectionEstablishing:
+            return evaluate_op_num((__u128)pv_info->is_connection_establishing, condition->op, (__u128)*(u8*)condition->value.raw);
         default:
             return false;
     }
@@ -197,12 +200,15 @@ static __u128 evaluate_packet_rules(void* rules_array_map, PacketViolationInfo *
                 rule_violated = false;
                 break;
             }
+
         }
+
         if (rule_violated) {
             *has_violation = true;
             return ((__u128)rule->id << (sizeof(__u64) * 8)) | (__u128)rule->order;
         }
     }
+
     return 0;
 }
 
