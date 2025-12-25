@@ -116,3 +116,5 @@ session_key = SHA256(shared_secret || "SpearIT-session")
 ```
 
 TODO: Remove some .expect() and unwraps()
+TODO: Reconnect to server when disconnected
+TODO: Send heartbeats with device information

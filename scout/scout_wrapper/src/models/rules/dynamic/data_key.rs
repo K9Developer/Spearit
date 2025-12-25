@@ -14,19 +14,20 @@ pub enum ConditionKey {
     Packet_DstPort = 5,
     Packet_Payload = 6,
     Packet_Protocol = 7,
+    Packet_IsConnectionEstablishing = 8,
 
-    Process_PID = 8,
-    Process_Name = 9,
-    Process_Path = 10,
-    Process_Args = 11,
+    Process_PID = 9,
+    Process_Name = 10,
+    Process_Path = 11,
+    Process_Args = 12,
 
-    Memory_ParentPID = 12,
-    Memory_AccessType = 13,
-    Memory_AccessAddr = 14,
+    Memory_ParentPID = 13,
+    Memory_AccessType = 14,
+    Memory_AccessAddr = 15,
 
-    File_Path = 15,
+    File_Path = 16,
 
-    User_Name = 16,
+    User_Name = 17,
 }
 
 impl ConditionKey {
@@ -39,6 +40,7 @@ impl ConditionKey {
             "packet.dst_port" => ConditionKey::Packet_DstPort,
             "packet.payload" => ConditionKey::Packet_Payload,
             "packet.protocol" => ConditionKey::Packet_Protocol,
+            "packet.is_connection_establishing" => ConditionKey::Packet_IsConnectionEstablishing,
             "process.pid" => ConditionKey::Process_PID,
             "process.name" => ConditionKey::Process_Name,
             "process.path" => ConditionKey::Process_Path,

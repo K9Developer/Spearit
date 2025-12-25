@@ -215,7 +215,7 @@ impl ScoutWrapper {
                         ReportType::ReportPacket => {
                             log_info!("Packet violation reported, sending to Spearhead...");
                             let fields = FieldsBuilder::new()
-                                .add_str(MessageIDs::PACKET_REPORT.to_string())
+                                .add_str(MessageIDs::REPORT.to_string())
                                 .add_str(report.to_json().to_string())
                                 .build();
                             match self.spearhead_conn.send_fields(fields) {

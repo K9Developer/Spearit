@@ -37,7 +37,7 @@ fn main() {
     scout_wrapper.connect_spearhead("10.100.102.174:12345");
 
     scout_wrapper.launch_ebpf(&std::path::PathBuf::from(
-        "/home/k9dev/Coding/Products/Spearit/scout/ebpf/build/loader",
+        "/home/k9dev/Coding/Products/Spearit/scout/ebpf/build/loader_spearit",
     ));
     scout_wrapper.connect_shm();
 

@@ -1,4 +1,5 @@
 use crate::constants::{SOCKET_FIELD_LENGTH_SIZE, SOCKET_FULL_LENGTH_SIZE};
+use crate::log_error;
 use std::fmt::Debug;
 use std::io;
 use std::io::{Error, ErrorKind};

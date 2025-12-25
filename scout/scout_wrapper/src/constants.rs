@@ -93,5 +93,5 @@ pub mod term {
 }
 
 pub mod MessageIDs {
-    pub const PACKET_REPORT: &'static str = "PKTR";
+    pub const REPORT: &'static str = "RPRT";
 }

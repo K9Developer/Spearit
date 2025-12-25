@@ -1,11 +1,12 @@
 use crate::constants::{SOCKET_FIELD_LENGTH_SIZE, SOCKET_FULL_LENGTH_SIZE};
+use crate::log_error;
 use crate::models::connection::fields::{Fields, FieldsBuilder};
 use aes::Aes128;
 use aes::cipher::block_padding::{Pkcs7, UnpadError};
 use aes::cipher::generic_array::GenericArray;
 use cbc::cipher::{BlockDecryptMut, BlockEncryptMut, KeyIvInit};
 use cbc::{Decryptor, Encryptor};
-use std::io;
+use std::io::{self, Error};
 use std::io::{ErrorKind, Read, Write};
 use std::net::{Shutdown, TcpStream};
 
