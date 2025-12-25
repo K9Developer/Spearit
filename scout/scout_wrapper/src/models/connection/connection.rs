@@ -62,7 +62,7 @@ impl Connection {
 
     pub fn stop(&mut self) {
         if let Some(socket) = self.socket.take() {
-            socket.shutdown(Shutdown::Both).unwrap()
+            socket.shutdown(Shutdown::Both);
         }
     }
 
@@ -70,6 +70,13 @@ impl Connection {
         self.stop();
         self.socket = Some(TcpStream::connect(addr)?);
         Ok(())
+    }
+
+    pub fn reset(&mut self) {
+        self.stop();
+        self.in_encrypt_mode = false;
+        self.session_key = [0; 16];
+        self.iv = [0; 16];
     }
 
     fn recv_exact(&mut self, size: usize) -> io::Result<Vec<u8>> {
@@ -124,5 +131,12 @@ impl Connection {
             }
         }
         Fields::from_bytes(raw_fields.as_slice())
+    }
+
+    pub fn is_connected(&mut self) -> bool {
+        match &mut self.socket {
+            None => false,
+            Some(soc) => soc.peer_addr().is_ok(),
+        }
     }
 }

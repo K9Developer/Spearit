@@ -29,6 +29,7 @@ use std::thread;
 // [x bytes for field 2]
 // TODO: In rule have order and ID, also have type (FROM_AIRGAP, USER, SYSTEM)
 
+#[derive(PartialEq)]
 enum ScoutWrapperState {
     NotConnected,
     Connected,
@@ -39,6 +40,7 @@ pub struct ScoutWrapper {
     state: ScoutWrapperState,
     loader_conn: SharedMemoryManager,
     spearhead_conn: Connection,
+    spear_head_addr: String,
 
     loader_process: Option<std::process::Child>,
 
@@ -64,7 +66,7 @@ impl ScoutWrapper {
         rules
     }
 
-    pub fn new() -> ScoutWrapper {
+    pub fn new(spear_head_addr: &str) -> ScoutWrapper {
         std::thread::spawn(|| {
             start_terminal();
         });
@@ -74,6 +76,7 @@ impl ScoutWrapper {
             state: ScoutWrapperState::NotConnected,
             loader_conn: unsafe { SharedMemoryManager::new() },
             spearhead_conn: Connection::new(),
+            spear_head_addr: spear_head_addr.to_string(),
             loader_process: None,
             rules: ScoutWrapper::load_rules(Path::new("/home/k9dev/Coding/Products/Spearit/scout/scout_wrapper/src/dynamic/rules.json").to_path_buf()),
         }
@@ -85,9 +88,10 @@ impl ScoutWrapper {
         }
     }
 
-    pub fn connect_spearhead(&mut self, addr: &str) {
-        log_info!("Connecting to Spearhead at {}...", addr);
-        match self.spearhead_conn.connect(addr) {
+    pub fn connect_spearhead(&mut self) {
+        self.spearhead_conn.reset();
+        log_info!("Connecting to Spearhead at {}...", self.spear_head_addr);
+        match self.spearhead_conn.connect(self.spear_head_addr.as_str()) {
             Ok(_) => {
                 let succ = HandshakeMessage::handle(&mut self.spearhead_conn);
                 if succ.is_err() {
@@ -149,6 +153,19 @@ impl ScoutWrapper {
     }
 
     pub fn loader_handler_tick(&mut self) {
+        if self.state == ScoutWrapperState::Connected {
+            if !self.spearhead_conn.is_connected() {
+                log_warn!("Connection to Spearhead lost.");
+                self.state = ScoutWrapperState::NotConnected;
+                return;
+            }
+        }
+
+        if self.state == ScoutWrapperState::NotConnected {
+            self.connect_spearhead();
+            return;
+        }
+
         unsafe {
             let res = self.loader_conn.read(-1);
             if res.is_none() {
