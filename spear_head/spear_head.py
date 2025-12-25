@@ -7,6 +7,7 @@ from models.connection.fields import FieldType, Fields
 from models.connection.socket_server import SocketServer, SocketServerEvent
 from models.events.event_manager import EventManager
 from models.events.types.event import EventKind
+from models.heartbeats.heartbeat_manager import HeartbeatManager
 
 @dataclass
 class SpearHeadConfig:
@@ -46,6 +47,15 @@ class SpearHead:
                 print("Invalid event")
                 return
             EventManager.submit_event(event_data, EventKind.from_str(event_type))
+        elif msg_id == MessageIDs.HEARTBEAT:
+            json_heartbeat = fields.consume_field(FieldType.TEXT)
+            if json_heartbeat is None: raise TypeError("Invalid field type in heartbeat (json)")
+            try:
+                heartbeat_data = json.loads(json_heartbeat.as_str())
+                print(f"Received Heartbeat: {heartbeat_data}")
+                HeartbeatManager.submit_heartbeat(heartbeat_data)
+            except json.JSONDecodeError:
+                print("Invalid heartbeat JSON data")
     
     def _tick(self) -> None:
         EventManager.process_event()
