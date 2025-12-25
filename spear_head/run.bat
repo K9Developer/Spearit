@@ -1,2 +1,2 @@
-cd ..
-python -B -m spear_head.main
+del databases\presistant\spearit.db
+python -B main.py

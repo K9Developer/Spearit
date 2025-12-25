@@ -1,9 +1,10 @@
+import copy
 import socket
 from typing import Callable
 from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
 from cryptography.hazmat.primitives import padding
-from spear_head.constants import AES_BLOCK_SIZE, SOCKET_FULL_LENGTH_SIZE
-from spear_head.models.connection.fields import FieldType, Fields
+from constants.constants import AES_BLOCK_SIZE, SOCKET_FULL_LENGTH_SIZE
+from models.connection.fields import FieldType, Fields
 
 class Connection:
     """
@@ -15,7 +16,7 @@ class Connection:
     in_encryption_mode: bool
     socket_: socket.socket
     addr: tuple[str, int]
-    cipher: Cipher | None
+    cipher: Cipher[modes.CBC] | None
 
     send_msg_callback: Callable[['Connection', Fields], None] | None
     recv_msg_callback: Callable[['Connection', Fields], None] | None
@@ -34,7 +35,7 @@ class Connection:
         self.cipher = None
         self.addr = ("", 0)
 
-    def __get_cipher(self) -> Cipher:
+    def __get_cipher(self) -> Cipher[modes.CBC]:
         if self.cipher is None:
             self.cipher = Cipher(algorithms.AES(self.session_key), modes.CBC(self.iv))
         return self.cipher
@@ -115,9 +116,9 @@ class Connection:
         if self.send_msg_callback: self.send_msg_callback(self, fields)
         data = fields.to_bytes(not self.in_encryption_mode)
         if self.in_encryption_mode:
-            data = self.__encrypt(data)
+            data = self.__encrypt(bytes(data))
             data = len(data).to_bytes(SOCKET_FULL_LENGTH_SIZE, byteorder="big") + data
-        self.__send_raw(data)
+        self.__send_raw(bytes(data))
 
     def recv_fields(self) -> Fields:
         """
@@ -137,5 +138,5 @@ class Connection:
             encrypted_data = bytes(fields.fields[0].value)
             decrypted_data = self.__decrypt(encrypted_data)
             fields = Fields.from_bytes(bytearray(len(decrypted_data).to_bytes(SOCKET_FULL_LENGTH_SIZE, byteorder="big") + decrypted_data))
-        if self.recv_msg_callback: self.recv_msg_callback(self, fields)
+        if self.recv_msg_callback: self.recv_msg_callback(self, copy.deepcopy(fields))
         return fields

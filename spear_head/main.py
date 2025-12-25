@@ -1,14 +1,16 @@
-from spear_head.constants import SPEAR_HEAD_WRAPPER_PORT
-from spear_head.models.connection.server import Server
+from databases import engine
+from databases.base import Base
+from spear_head import SpearHead
+from utils.ai_manager import AIManager
 
 def main():
-    server = Server("0.0.0.0", SPEAR_HEAD_WRAPPER_PORT)
-    server.register_callback(None, lambda event, conn, fields: print(f"Event ({event}) on {conn.addr} - total bytes: {len(fields.to_bytes(False))}"))
-    server.accept_clients()
-    while True:
-        pass
+    # TODO: use alembic when database structure is stable
+    print("REMEMBER: If changed table, delete DB file to recreate!")
+    Base.metadata.create_all(engine.engine)
+    AIManager.init()
+    sh = SpearHead()
+    sh.start()
 
 
 if __name__ == "__main__":
-    print(f"Spear Head Server is running on port {SPEAR_HEAD_WRAPPER_PORT}...")
     main()

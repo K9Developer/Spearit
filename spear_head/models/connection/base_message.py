@@ -1,4 +1,4 @@
-from spear_head.models.connection.connection import Connection
+from models.connection.connection import Connection
 
 class BaseMessage:
 
