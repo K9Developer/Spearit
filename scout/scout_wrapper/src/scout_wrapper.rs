@@ -7,14 +7,15 @@ use crate::models::connection::fields::FieldsBuilder;
 use crate::models::connection::message_trait::MessageTrait;
 use crate::models::connection::messages::handshake::HandshakeMessage;
 use crate::models::heartbeat::heartbeat::{Heartbeat, NetworkDetails};
+use crate::models::shared_types::network_info::NetworkInfo;
 use crate::{
     constants::GLOBAL_STATE,
     log_bpf, log_debug, log_error, log_info, log_warn,
     models::{
         connection::connection::Connection,
         loader_shm::shared_memory::{CommID, SharedMemoryManager},
-        report::report::{Report, ReportType},
         rules::rule::{CompiledRule, RawRule, Rule},
+        shared_types::report::{Report, ReportType},
     },
     terminal_ui::start_terminal,
 };
@@ -278,6 +279,25 @@ impl ScoutWrapper {
                                 report.type_
                             );
                         }
+                    }
+                }
+                Some(CommID::ResNetworkInfoUpdate) => {
+                    if res.size < std::mem::size_of::<NetworkInfo>() {
+                        log_warn!("Received network info update data is too small.");
+                        return;
+                    }
+                    let net_info =
+                        unsafe { std::ptr::read(res.data.as_ptr() as *const NetworkInfo) };
+
+                    log_info!("Received network info update from loader.");
+                    log_info!("Entries: {}", net_info.mac_contacts.current_size);
+                    for i in 0..net_info.mac_contacts.current_size as usize {
+                        let raw_name = unsafe { net_info.mac_contacts.names[i] };
+                        let name = String::from_utf8_lossy(&raw_name)
+                            .trim_end_matches(char::from(0))
+                            .to_string();
+                        let count = net_info.mac_contacts.counts[i];
+                        log_info!("\tContacted MAC: {}, Count: {}", name, count);
                     }
                 }
                 _ => {

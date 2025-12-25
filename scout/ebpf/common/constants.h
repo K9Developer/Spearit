@@ -1,5 +1,7 @@
 #pragma once
 
+#define MAX(a,b) ((a) > (b) ? (a) : (b))
+
 #define SHARED_MEMORY_PATH_WRITE "scout_shared_memory_loader_write"
 #define SHARED_MEMORY_PATH_READ "scout_shared_memory_wrapper_write"
 
@@ -7,6 +9,7 @@
 #define LOADER_SHM_KEY 0xCAFEBABEFACEFEED
 
 #define SYNC_INTERVAL_MS 5 * 60 * 1000 // 5 minutes
+#define HEARTBEAT_NETWORK_INFO_INTERVAL 10 //60 * 10 // seconds
 
 // Rules
 #define MAX_CONDITION_RAW_VALUE_LENGTH 32
@@ -29,6 +32,11 @@
 #define DIRECTION_OUTBOUND 1
 #define CATEGORY_CONNECTION 0
 #define CATEGORY_PACKET 1
+
+#define MAX_NETWORK_RECORDS 32
+
+#define MAX_PROCESS_NAME_LENGTH 16
+#define MAX_NETWORK_RECORD_NAME_LENGTH MAX(MAX_PROCESS_NAME_LENGTH, 17) // 17 is mac address string length
 
 #ifndef AF_INET
 #define AF_INET 2

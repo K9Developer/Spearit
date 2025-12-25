@@ -1,5 +1,5 @@
 use crate::{
-    constants::{MAX_PAYLOAD_SIZE, ViolationType},
+    constants::{MAX_PAYLOAD_SIZE, MAX_PROCESS_NAME_LENGTH, ViolationType},
     log_error,
     models::rules::response::ResponseType,
 };
@@ -275,7 +275,7 @@ impl Debug for PacketViolationInfo {
 #[derive(Clone, Copy, Debug)]
 pub struct ProcessInfo {
     pub pid: u32,
-    pub name: [u8; 16],
+    pub name: [u8; MAX_PROCESS_NAME_LENGTH],
 }
 
 #[repr(C)]

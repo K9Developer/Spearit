@@ -24,6 +24,14 @@ struct {
     __uint(max_entries, sizeof(PacketViolationInfo) * 1024);
 } packet_violations SEC(".maps");
 
+struct {
+    __uint(type, BPF_MAP_TYPE_RINGBUF);
+    __uint(max_entries, sizeof(NetworkInfo) * 1024);
+} network_info SEC(".maps");
+
+size_t last_network_info_update = 0;
+NetworkInfo current_network_info = {0};
+
 static __always_inline const char* prot_name(__u16 proto)
 {
     switch (proto) {
@@ -147,11 +155,11 @@ int handle_packet(struct __sk_buff *skb, __u8 direction) {
     pv_info.timestamp_ns = bpf_ktime_get_tai_ns();
     pv_info.direction = direction;
     pv_info.process.pid = bpf_get_current_pid_tgid() >> 32;
-    pv_info.protocol = bpf_ntohs(proto);
     pv_info.process.name[0] = 'N';
     pv_info.process.name[1] = '/';
     pv_info.process.name[2] = 'A';
     pv_info.process.name[3] = 0;
+    pv_info.protocol = bpf_ntohs(proto);
     __builtin_memcpy(pv_info.src_mac, eth_packet->h_source, 6);
     __builtin_memcpy(pv_info.dst_mac, eth_packet->h_dest, 6);
 
@@ -163,6 +171,19 @@ int handle_packet(struct __sk_buff *skb, __u8 direction) {
         extract_payload(skb, sizeof(struct ethhdr), &pv_info.payload);
     }
 
+    update_network_info(&current_network_info, &pv_info);
+    size_t now = bpf_ktime_get_ns() / 1000000000; // seconds
+    if (now - last_network_info_update >= HEARTBEAT_NETWORK_INFO_INTERVAL) {
+        bpf_printk("Updating network info map");
+        __u32 key = 0;
+        NetworkInfo *ev = bpf_ringbuf_reserve(&network_info, sizeof(*ev), 0);
+        if (ev) {
+            *ev = current_network_info;
+            bpf_ringbuf_submit(ev, BPF_RB_FORCE_WAKEUP);
+            current_network_info.mac_contacts.current_size = 0; // reset for next interval
+            last_network_info_update = now;
+        }
+    } 
 
     bool has_violation = false;
     __u128 violated_rule_info = evaluate_packet_rules(&rules, &pv_info, &has_violation);

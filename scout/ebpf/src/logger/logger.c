@@ -3,15 +3,6 @@
 #include <stdarg.h>
 #include <bpf/libbpf.h>
 
-// #define RESET   "\x1b[0m"
-// #define BOLD    "\x1b[1m"
-// #define D_PRE   "\x1b[1;90m[-]\x1b[0m"
-// #define D_MSG   "\x1b[90m"
-// #define I_PRE   "\x1b[1;36m[*]\x1b[0m"
-// #define I_MSG   "\x1b[37m"
-// #define W_PRE   "\x1b[1;33m[!]\x1b[0m"
-// #define W_MSG   "\x1b[93m"
-// #define E_PRE   "\x1b[1;97;41m[ERROR]"
 #define RESET   ""
 #define BOLD    ""
 #define D_PRE   "[-]"

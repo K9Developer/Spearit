@@ -32,6 +32,7 @@ pub enum CommID {
     ResRuleViolation = 3,
     ResActiveRuleIds = 4,
     ResRuleData = 5,
+    ResNetworkInfoUpdate = 6,
 }
 
 impl CommID {
@@ -43,6 +44,7 @@ impl CommID {
             3 => Some(CommID::ResRuleViolation),
             4 => Some(CommID::ResActiveRuleIds),
             5 => Some(CommID::ResRuleData),
+            6 => Some(CommID::ResNetworkInfoUpdate),
             _ => None,
         }
     }

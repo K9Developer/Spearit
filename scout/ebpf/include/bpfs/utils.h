@@ -155,43 +155,43 @@ static __noinline __u64 bytes_to_u64(const __u8 *buf, __u64 len)
     return val;
 }
 
-static __noinline bool are_buffers_equal(__u8* buf1, __u8* buf2, __u64 length1, __u64 length2) {
-    if (!buf1 || !buf2) return false;
-    if (length1 != length2) return false;
-    __u64 len = length1;
-    // len is known to be <= 32 from extract_condition_value_raw()
-    if (len == 0) return true;
+// static __noinline bool are_buffers_equal(__u8* buf1, __u8* buf2, __u64 length1, __u64 length2) {
+//     if (!buf1 || !buf2) return false;
+//     if (length1 != length2) return false;
+//     __u64 len = length1;
+//     // len is known to be <= 32 from extract_condition_value_raw()
+//     if (len == 0) return true;
 
-    __u64 diff = 0;
+//     __u64 diff = 0;
 
-    // Compare up to 8 bytes at a time when possible
-    if (len >= 8) {
-        __u64 v1 = *(const __u64*)buf1;
-        __u64 v2 = *(const __u64*)buf2;
-        diff |= (v1 ^ v2);
-        if (diff) return false;
-        buf1 += 8; buf2 += 8; len -= 8;
-    }
-    if (len >= 4) {
-        __u32 v1 = *(const __u32*)buf1;
-        __u32 v2 = *(const __u32*)buf2;
-        diff |= (v1 ^ v2);
-        if (diff) return false;
-        buf1 += 4; buf2 += 4; len -= 4;
-    }
-    if (len >= 2) {
-        __u16 v1 = *(const __u16*)buf1;
-        __u16 v2 = *(const __u16*)buf2;
-        diff |= (v1 ^ v2);
-        if (diff) return false;
-        buf1 += 2; buf2 += 2; len -= 2;
-    }
-    if (len >= 1) {
-        diff |= buf1[0] ^ buf2[0];
-    }
+//     // Compare up to 8 bytes at a time when possible
+//     if (len >= 8) {
+//         __u64 v1 = *(const __u64*)buf1;
+//         __u64 v2 = *(const __u64*)buf2;
+//         diff |= (v1 ^ v2);
+//         if (diff) return false;
+//         buf1 += 8; buf2 += 8; len -= 8;
+//     }
+//     if (len >= 4) {
+//         __u32 v1 = *(const __u32*)buf1;
+//         __u32 v2 = *(const __u32*)buf2;
+//         diff |= (v1 ^ v2);
+//         if (diff) return false;
+//         buf1 += 4; buf2 += 4; len -= 4;
+//     }
+//     if (len >= 2) {
+//         __u16 v1 = *(const __u16*)buf1;
+//         __u16 v2 = *(const __u16*)buf2;
+//         diff |= (v1 ^ v2);
+//         if (diff) return false;
+//         buf1 += 2; buf2 += 2; len -= 2;
+//     }
+//     if (len >= 1) {
+//         diff |= buf1[0] ^ buf2[0];
+//     }
 
-    return diff == 0;
-}
+//     return diff == 0;
+// }
 
 static __noinline bool is_buffer_lower_than(__u8* buf1, __u8* buf2, __u64 length1, __u64 length2) {
     if (!buf1 || !buf2) return false;
@@ -231,4 +231,92 @@ static __noinline bool is_buffer_greater_than(__u8* buf1, __u8* buf2, __u64 leng
     low1 = bytes_to_u64(buf1, low1off);
     low2 = bytes_to_u64(buf2, low2off);
     return low1 > low2;
+}
+
+static __noinline void __add_new_contact(NetworkContacts *contacts, const unsigned char padded_name[MAX_NETWORK_RECORD_NAME_LENGTH])
+{
+    __u32 index = contacts->current_size;
+    if (index >= MAX_NETWORK_RECORDS) return;
+
+    __u32 off = index * (__u32)MAX_NETWORK_RECORD_NAME_LENGTH;
+    if (off > (MAX_NETWORK_RECORDS - 1) * (__u32)MAX_NETWORK_RECORD_NAME_LENGTH)
+        return;
+
+    char *dst = (char *)contacts;
+    dst += __builtin_offsetof(NetworkContacts, names);
+    dst += (__u64)off;
+
+    #pragma clang loop unroll(full)
+    for (int i = 0; i < MAX_NETWORK_RECORD_NAME_LENGTH; i++)
+        dst[i] = (char)padded_name[i];
+
+    contacts->counts[index] = 1;
+    contacts->current_size = index + 1;
+}
+
+static __noinline void __update_contact_counts(NetworkContacts *contacts, unsigned char *name, __u64 name_length)
+{
+    if (!contacts || !name) return;
+    if (name_length == 0) return;
+
+    if (name_length > MAX_NETWORK_RECORD_NAME_LENGTH) name_length = MAX_NETWORK_RECORD_NAME_LENGTH;
+
+    unsigned char padded_name[MAX_NETWORK_RECORD_NAME_LENGTH];
+
+    #pragma clang loop unroll(disable)
+    for (int i = 0; i < MAX_NETWORK_RECORD_NAME_LENGTH; i++)
+        padded_name[i] = 0;
+
+    #pragma clang loop unroll(disable)
+    for (int i = 0; i < MAX_NETWORK_RECORD_NAME_LENGTH; i++) {
+        if (i >= name_length)
+            break;
+        padded_name[i] = name[i];
+    }
+
+    // search for existing contact
+    #pragma clang loop unroll(disable)
+    for (int i = 0; i < MAX_NETWORK_RECORDS; i++) {
+        if (i >= contacts->current_size)
+            break;
+
+        bool equal = true;
+        #pragma clang loop unroll(disable)
+        for (int j = 0; j < MAX_NETWORK_RECORD_NAME_LENGTH; j++) {
+            if (j >= name_length) break;
+            bpf_printk("Comparing contact name byte %d: %c vs %c", j, contacts->names[i][j], padded_name[j]);
+            if (contacts->names[i][j] != padded_name[j]) {
+                equal = false;
+                break;
+            }
+        }
+
+        if (equal) {
+            contacts->counts[i] += 1;
+            return;
+        }
+    }
+
+    // add new contact
+    if (contacts->current_size < MAX_NETWORK_RECORDS) __add_new_contact(contacts, padded_name);
+}
+
+static __always_inline void mac_to_text(char out[17], const unsigned char mac[6])
+{
+    static const char hex[] = "0123456789abcdef";
+    out[0]  = hex[(mac[0] >> 4) & 0xF]; out[1]  = hex[(mac[0] >> 0) & 0xF]; out[2]  = ':';
+    out[3]  = hex[(mac[1] >> 4) & 0xF]; out[4]  = hex[(mac[1] >> 0) & 0xF]; out[5]  = ':';
+    out[6]  = hex[(mac[2] >> 4) & 0xF]; out[7]  = hex[(mac[2] >> 0) & 0xF]; out[8]  = ':';
+    out[9]  = hex[(mac[3] >> 4) & 0xF]; out[10] = hex[(mac[3] >> 0) & 0xF]; out[11] = ':';
+    out[12] = hex[(mac[4] >> 4) & 0xF]; out[13] = hex[(mac[4] >> 0) & 0xF]; out[14] = ':';
+    out[15] = hex[(mac[5] >> 4) & 0xF]; out[16] = hex[(mac[5] >> 0) & 0xF];
+}
+
+static __noinline void update_network_info(NetworkInfo* network_info, PacketViolationInfo* pv_info) {
+    if (!network_info || !pv_info) return;
+    if (pv_info->direction == DIRECTION_INBOUND) return; // only track outbound contacts
+
+    char mac_txt[17] = {0};
+    mac_to_text(mac_txt, pv_info->dst_mac);
+    __update_contact_counts(&network_info->mac_contacts, (unsigned char*)mac_txt, 17);
 }

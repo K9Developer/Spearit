@@ -81,6 +81,10 @@ void send_report(Report report) {
     shm_send(RES_RULE_VIOLATION, &report, sizeof(report));
 }
 
+void send_network_info(NetworkInfo ni) {
+    shm_send(RES_NETWORK_INFO_UPDATE, &ni, sizeof(ni));
+}
+
 CompiledRule* get_rules()
 {
     return RULES;

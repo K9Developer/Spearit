@@ -19,7 +19,8 @@ pub mod connection {
     }
 }
 
-pub mod report {
+pub mod shared_types {
+    pub mod network_info;
     pub mod report;
 }
 
@@ -35,5 +36,4 @@ pub mod logger {
 
 pub mod heartbeat {
     pub mod heartbeat;
-    pub mod heartbeat_manager;
 }

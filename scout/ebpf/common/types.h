@@ -19,7 +19,7 @@ typedef struct {
 
     struct {
         unsigned int pid;
-        char name[16];
+        char name[MAX_PROCESS_NAME_LENGTH];
     } process;
 
     unsigned char src_mac[6];
@@ -38,3 +38,13 @@ typedef struct {
 
     PayloadBuffer payload;
 } PacketViolationInfo;
+
+typedef struct {
+    unsigned char names[MAX_NETWORK_RECORDS][MAX_NETWORK_RECORD_NAME_LENGTH];  // padded with zeros
+    unsigned int counts[MAX_NETWORK_RECORDS];
+    unsigned int current_size;
+} NetworkContacts;
+
+typedef struct {
+    NetworkContacts mac_contacts;
+} NetworkInfo;

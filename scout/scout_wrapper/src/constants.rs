@@ -99,3 +99,11 @@ pub mod MessageIDs {
 
 // TODO: Larger value (about 20 minutes)
 pub const HEARTBEAT_INTERVAL: u64 = 60; // seconds
+
+pub const MAX_PROCESS_NAME_LENGTH: usize = 16;
+pub const MAX_NETWORK_RECORDS: usize = 32;
+pub const MAX_NETWORK_RECORD_NAME_LENGTH: usize = if MAX_PROCESS_NAME_LENGTH > 17 {
+    MAX_PROCESS_NAME_LENGTH
+} else {
+    17
+};

@@ -48,6 +48,16 @@ int handle_packet_violation(void *ctx, void *data, size_t size)
     send_report(report);
 }
 
+int handle_network_info(void *ctx, void *data, size_t size)
+{
+    NetworkInfo *ni = data;
+    log_info("Received Network Info Update (%d entries):", ni->mac_contacts.current_size);
+    for (unsigned int i = 0; i < ni->mac_contacts.current_size; i++) {
+        log_info("  MAC Contact: %s, Count: %d", ni->mac_contacts.names[i], ni->mac_contacts.counts[i]);
+    }
+    send_network_info(*ni);
+    return 0;
+}
 
 struct bpf_object * load_packet_scout() {
     log_debug("Loading packet scout BPF object...");
@@ -102,6 +112,10 @@ int main(int argc, char **argv)
     struct ring_buffer *packet_rb = get_ringbuf_map(packet_obj_file, "packet_violations", handle_packet_violation);
     if (!packet_rb) return 1;
 
+    log_debug("Setting up network info ring buffer...");
+    struct ring_buffer *network_info_rb = get_ringbuf_map(packet_obj_file, "network_info", handle_network_info);
+    if (!network_info_rb) return 1;
+
     log_debug("Setting up packet rules array...");
     int packet_rules_map_fd = get_array_map_fd(packet_obj_file, "rules");
     if (packet_rules_map_fd < 0) return 1;
@@ -131,8 +145,8 @@ int main(int argc, char **argv)
             sync_rules(packet_rules_map_fd);
         }
 
-        ring_buffer__consume(packet_rb);
         if (err = ring_buffer__consume(packet_rb) < 0) fprintf(stderr, "Error polling ring buffer (packet): %d\n", err);
+        if (err = ring_buffer__consume(network_info_rb) < 0) fprintf(stderr, "Error polling ring buffer (network info): %d\n", err);
     }
 
 cleanup:

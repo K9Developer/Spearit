@@ -15,7 +15,8 @@ typedef enum {
     REQ_RULE_DATA, // Request data for a specific rule
     RES_RULE_VIOLATION, // Response indicating a rule violation
     RES_ACTIVE_RULE_IDS, // Response with active rule IDs
-    RES_RULE_DATA // Response with rule data
+    RES_RULE_DATA, // Response with rule data
+    RES_NETWORK_INFO_UPDATE // Response with network info update
 } CommID;
 
 typedef struct {
