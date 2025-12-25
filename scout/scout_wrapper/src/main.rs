@@ -32,9 +32,7 @@ fn main() {
     // }
 
     set_debug_enabled(true);
-    let mut scout_wrapper = ScoutWrapper::new();
-
-    scout_wrapper.connect_spearhead("10.100.102.174:12345");
+    let mut scout_wrapper = ScoutWrapper::new("10.100.102.174:12345");
 
     scout_wrapper.launch_ebpf(&std::path::PathBuf::from(
         "/home/k9dev/Coding/Products/Spearit/scout/ebpf/build/loader_spearit",
