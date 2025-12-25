@@ -1,10 +1,12 @@
 use std::path::{Path, PathBuf};
 use std::slice;
 
+use crate::constants::HEARTBEAT_INTERVAL;
 use crate::constants::MessageIDs;
 use crate::models::connection::fields::FieldsBuilder;
 use crate::models::connection::message_trait::MessageTrait;
 use crate::models::connection::messages::handshake::HandshakeMessage;
+use crate::models::heartbeat::heartbeat::{Heartbeat, NetworkDetails};
 use crate::{
     constants::GLOBAL_STATE,
     log_bpf, log_debug, log_error, log_info, log_warn,
@@ -16,18 +18,11 @@ use crate::{
     },
     terminal_ui::start_terminal,
 };
+use std::collections::HashMap;
 use std::io::BufRead;
 use std::io::BufReader;
 use std::process::{Command, Stdio};
 use std::thread;
-
-// TODO: [8 bytes to signify full message length]
-// [4 bytes to signify the goal of the message]
-// [4 bytes to signify field 1 length]
-// [x bytes for field 1]
-// [4 bytes to signify field 2 length]
-// [x bytes for field 2]
-// TODO: In rule have order and ID, also have type (FROM_AIRGAP, USER, SYSTEM)
 
 #[derive(PartialEq)]
 enum ScoutWrapperState {
@@ -45,6 +40,8 @@ pub struct ScoutWrapper {
     loader_process: Option<std::process::Child>,
 
     rules: Vec<Rule>,
+
+    last_heartbeat_time: std::time::Instant,
 }
 
 impl ScoutWrapper {
@@ -71,6 +68,8 @@ impl ScoutWrapper {
             start_terminal();
         });
 
+        let mut time = std::time::Instant::now();
+        time -= std::time::Duration::from_secs(HEARTBEAT_INTERVAL);
         ScoutWrapper {
             spear_head_conn: Connection::new(),
             state: ScoutWrapperState::NotConnected,
@@ -78,6 +77,7 @@ impl ScoutWrapper {
             spearhead_conn: Connection::new(),
             spear_head_addr: spear_head_addr.to_string(),
             loader_process: None,
+            last_heartbeat_time: time,
             rules: ScoutWrapper::load_rules(Path::new("/home/k9dev/Coding/Products/Spearit/scout/scout_wrapper/src/dynamic/rules.json").to_path_buf()),
         }
     }
@@ -164,6 +164,30 @@ impl ScoutWrapper {
         if self.state == ScoutWrapperState::NotConnected {
             self.connect_spearhead();
             return;
+        }
+
+        if self.state != ScoutWrapperState::Connected {
+            return;
+        }
+
+        if self.last_heartbeat_time.elapsed().as_secs() >= HEARTBEAT_INTERVAL {
+            let hb = Heartbeat::generate(NetworkDetails {
+                contacted_macs: HashMap::new(),
+                program_usage: HashMap::new(),
+            });
+            let fields = FieldsBuilder::new()
+                .add_str(MessageIDs::HEARTBEAT.to_string())
+                .add_str(hb.to_json())
+                .build();
+            match self.spearhead_conn.send_fields(fields) {
+                Ok(_) => {
+                    log_debug!("Sent heartbeat to Spearhead.");
+                    self.last_heartbeat_time = std::time::Instant::now();
+                }
+                Err(e) => {
+                    log_error!("Failed to send heartbeat to Spearhead. Error: {:?}", e);
+                }
+            }
         }
 
         unsafe {

@@ -1,36 +1,17 @@
+use getifaddrs::{InterfaceFlags, getifaddrs};
+use libc::exit;
 use scout_wrapper::constants::GLOBAL_STATE;
 use scout_wrapper::models::connection::connection::Connection;
 use scout_wrapper::models::connection::message_trait::MessageTrait;
 use scout_wrapper::models::connection::messages::handshake::HandshakeMessage;
+use scout_wrapper::models::heartbeat::heartbeat::{Heartbeat, NetworkDetails};
 use scout_wrapper::models::logger::logger::set_debug_enabled;
 use scout_wrapper::scout_wrapper::ScoutWrapper;
 use scout_wrapper::{log_debug, log_error, log_info, log_warn};
+use std::collections::HashMap;
+use std::net::IpAddr;
 
 fn main() {
-    // let mut shmm = unsafe { models::loader_shm::shared_memory::SharedMemoryManager::new() };
-    // // wait for key press
-    // println!("Press Enter to continue...");
-
-    // // Create a mutable string to hold input (we just discard it here)
-    // let mut buffer = String::new();
-
-    // // Wait until the user presses Enter
-    // std::io::stdin().read_line(&mut buffer).unwrap();
-
-    // unsafe {
-    //     shmm.connect();
-    //     println!("Connected to shared memory.");
-    // }
-
-    // // Write data BEFORE signaling readiness to avoid race condition
-    // let a = vec![43; 8];
-    // unsafe {
-    //     shmm.write(
-    //         models::loader_shm::shared_memory::CommID::ReqActiveRuleIds,
-    //         a.as_slice(),
-    //     );
-    // }
-
     set_debug_enabled(true);
     let mut scout_wrapper = ScoutWrapper::new("10.100.102.174:12345");
 

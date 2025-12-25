@@ -32,3 +32,8 @@ pub mod types;
 pub mod logger {
     pub mod logger;
 }
+
+pub mod heartbeat {
+    pub mod heartbeat;
+    pub mod heartbeat_manager;
+}

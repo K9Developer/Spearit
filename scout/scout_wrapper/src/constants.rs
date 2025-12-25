@@ -94,4 +94,8 @@ pub mod term {
 
 pub mod MessageIDs {
     pub const REPORT: &'static str = "RPRT";
+    pub const HEARTBEAT: &'static str = "HRTB";
 }
+
+// TODO: Larger value (about 20 minutes)
+pub const HEARTBEAT_INTERVAL: u64 = 60; // seconds
