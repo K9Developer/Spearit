@@ -49,7 +49,7 @@ def fix_event_process(campaign: Campaign, event: EventType_) -> list[PacketEvent
         
     #     score = same_conversation_score(event, camp_event)
     #     if score < 0.7: continue
-    #     if camp_event.process.name != "N/A" and camp_event.process.name != "loader":
+    #     if camp_event.process.name != "N/A" and camp_event.process.name != "loader_spearit":
     #         chosen_event_name = camp_event.process.name
         
     #     if camp_event.process.name != chosen_event_name and chosen_event_name != "":
