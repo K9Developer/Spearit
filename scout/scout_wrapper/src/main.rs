@@ -1,5 +1,4 @@
 use getifaddrs::{InterfaceFlags, getifaddrs};
-use libc::exit;
 use scout_wrapper::constants::GLOBAL_STATE;
 use scout_wrapper::models::connection::connection::Connection;
 use scout_wrapper::models::connection::message_trait::MessageTrait;

@@ -6,7 +6,7 @@ use crate::constants::MessageIDs;
 use crate::models::connection::fields::FieldsBuilder;
 use crate::models::connection::message_trait::MessageTrait;
 use crate::models::connection::messages::handshake::HandshakeMessage;
-use crate::models::heartbeat::heartbeat::{Heartbeat, NetworkDetails};
+use crate::models::heartbeat::heartbeat::{Heartbeat, NetworkDetails, SystemMetrics};
 use crate::models::shared_types::network_info::NetworkInfo;
 use crate::{
     constants::GLOBAL_STATE,
@@ -43,6 +43,7 @@ pub struct ScoutWrapper {
     rules: Vec<Rule>,
 
     last_heartbeat_time: std::time::Instant,
+    current_heartbeat: Heartbeat,
 }
 
 impl ScoutWrapper {
@@ -80,6 +81,10 @@ impl ScoutWrapper {
             loader_process: None,
             last_heartbeat_time: time,
             rules: ScoutWrapper::load_rules(Path::new("/home/k9dev/Coding/Products/Spearit/scout/scout_wrapper/src/dynamic/rules.json").to_path_buf()),
+            current_heartbeat: Heartbeat::generate(
+                NetworkDetails::new(),
+                SystemMetrics::new(),
+            ),
         }
     }
 
@@ -171,14 +176,12 @@ impl ScoutWrapper {
             return;
         }
 
+        self.current_heartbeat.system_metrics.update();
         if self.last_heartbeat_time.elapsed().as_secs() >= HEARTBEAT_INTERVAL {
-            let hb = Heartbeat::generate(NetworkDetails {
-                contacted_macs: HashMap::new(),
-                program_usage: HashMap::new(),
-            });
+            self.current_heartbeat.generate_self();
             let fields = FieldsBuilder::new()
                 .add_str(MessageIDs::HEARTBEAT.to_string())
-                .add_str(hb.to_json())
+                .add_str(self.current_heartbeat.to_json())
                 .build();
             match self.spearhead_conn.send_fields(fields) {
                 Ok(_) => {
@@ -189,6 +192,7 @@ impl ScoutWrapper {
                     log_error!("Failed to send heartbeat to Spearhead. Error: {:?}", e);
                 }
             }
+            self.current_heartbeat.reset();
         }
 
         unsafe {
@@ -198,6 +202,7 @@ impl ScoutWrapper {
             }
             let res = res.unwrap();
             let req_id = CommID::from_u32(res.request_id);
+            log_warn!("Received loader request ID: {:?}", req_id);
             match req_id {
                 Some(CommID::ReqActiveRuleIds) => {
                     log_debug!("Received active rule IDs request from loader.");
@@ -289,16 +294,9 @@ impl ScoutWrapper {
                     let net_info =
                         unsafe { std::ptr::read(res.data.as_ptr() as *const NetworkInfo) };
 
-                    log_info!("Received network info update from loader.");
-                    log_info!("Entries: {}", net_info.mac_contacts.current_size);
-                    for i in 0..net_info.mac_contacts.current_size as usize {
-                        let raw_name = unsafe { net_info.mac_contacts.names[i] };
-                        let name = String::from_utf8_lossy(&raw_name)
-                            .trim_end_matches(char::from(0))
-                            .to_string();
-                        let count = net_info.mac_contacts.counts[i];
-                        log_info!("\tContacted MAC: {}, Count: {}", name, count);
-                    }
+                    self.current_heartbeat
+                        .network_details
+                        .merge_network_info(&net_info);
                 }
                 _ => {
                     log_warn!("Received unknown request ID from loader: {:?}", req_id);

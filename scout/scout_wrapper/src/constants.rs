@@ -45,6 +45,8 @@ pub const SOCKET_FULL_LENGTH_SIZE: usize = 8;
 pub const WRAPPER_SHM_KEY: usize = 0xDEADBEEFC0DEFACE;
 pub const LOADER_SHM_KEY: usize = 0xCAFEBABEFACEFEED;
 
+pub const ENABLE_ENCRYPTION: bool = true;
+
 // Rules
 pub const MAX_CONDITION_RAW_VALUE_LENGTH: usize = 32;
 pub const MAX_CONDITIONS: usize = 8; // per rule
@@ -99,6 +101,7 @@ pub mod MessageIDs {
 
 // TODO: Larger value (about 20 minutes)
 pub const HEARTBEAT_INTERVAL: u64 = 60; // seconds
+pub const SYSTEM_METRICS_INTERVAL: u64 = 5; // seconds
 
 pub const MAX_PROCESS_NAME_LENGTH: usize = 16;
 pub const MAX_NETWORK_RECORDS: usize = 32;

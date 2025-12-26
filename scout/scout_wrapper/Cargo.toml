@@ -19,7 +19,7 @@ ratatui = "0.29.0"
 crossterm = "0.29"
 once_cell = "1.21.3"
 getifaddrs = "0.4"
-whoami = "1.6"
+sysinfo = "0.37.2"
 
 [build]
 rustflags = ["-Awarnings"]

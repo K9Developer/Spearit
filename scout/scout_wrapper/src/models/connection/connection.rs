@@ -1,6 +1,6 @@
-use crate::constants::{SOCKET_FIELD_LENGTH_SIZE, SOCKET_FULL_LENGTH_SIZE};
-use crate::log_error;
+use crate::constants::{ENABLE_ENCRYPTION, SOCKET_FIELD_LENGTH_SIZE, SOCKET_FULL_LENGTH_SIZE};
 use crate::models::connection::fields::{Fields, FieldsBuilder};
+use crate::{log_error, log_warn};
 use aes::Aes128;
 use aes::cipher::block_padding::{Pkcs7, UnpadError};
 use aes::cipher::generic_array::GenericArray;
@@ -35,6 +35,10 @@ impl Connection {
         self.session_key.copy_from_slice(&session_key[..16]);
     }
     pub fn enable_encryption(&mut self) {
+        if !ENABLE_ENCRYPTION {
+            log_warn!("Encryption is disabled via constants. Not enabling encryption.");
+            return;
+        }
         self.in_encrypt_mode = true;
     }
     pub fn disable_encryption(&mut self) {

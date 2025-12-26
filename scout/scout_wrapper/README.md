@@ -118,4 +118,4 @@ session_key = SHA256(shared_secret || "SpearIT-session")
 TODO: Remove some .expect() and unwraps()
 TODO: Send heartbeats with device information
 TODO: When recieiving event from ebpf, add to queue and have a consumer
-TODO: add general network info in ebpf and send to wrapper
+TODO: Make the message handler in wrapper a bit nicer looking
