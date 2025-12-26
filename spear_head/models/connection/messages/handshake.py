@@ -2,6 +2,7 @@ import hashlib
 import os
 import struct
 import time
+from constants.constants import ENABLE_ENCRYPTION
 from models.connection.base_message import BaseMessage
 from models.connection.connection import Connection
 from cryptography.hazmat.primitives.asymmetric import x25519
@@ -36,7 +37,8 @@ class HandshakeMessage(BaseMessage):
         h.update(b"SpearIT-K9Dev")
         session_key = h.digest()  # 32 bytes
         conn.session_key = session_key[:16]  # AES-128
-        conn.in_encryption_mode = True
+        if ENABLE_ENCRYPTION: conn.in_encryption_mode = True
+        else: print("Encryption disabled via constants")
 
         # [Server --> Client] timestamp encrypted
         now_raw = struct.pack(">Q", int(time.time()))

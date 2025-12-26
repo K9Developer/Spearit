@@ -16,4 +16,4 @@ class EventDB(Base):
     event_type = Column(String(32), nullable=False)
     event_data = Column(JSON, nullable=False)
     timestamp = Column(DateTime(timezone=True), server_default=func.now())
-    responses_taken = Column(JSON, nullable=True)
+    response_taken = Column(String, nullable=True)

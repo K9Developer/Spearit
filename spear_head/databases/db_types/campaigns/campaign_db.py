@@ -9,6 +9,7 @@ class CampaignDB(Base):
 
     name = Column(String(32), nullable=True)
     description = Column(String(512), nullable=True)
+    detailed_description = Column(String(512), nullable=True)
     start = Column(DateTime(timezone=True), server_default=func.now())
     last_updated = Column(DateTime(timezone=True), server_default=func.now())
     status = Column(String(16), nullable=False) # ONGOING, COMPLETED, ABORTED

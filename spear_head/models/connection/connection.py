@@ -138,5 +138,4 @@ class Connection:
             encrypted_data = bytes(fields.fields[0].value)
             decrypted_data = self.__decrypt(encrypted_data)
             fields = Fields.from_bytes(bytearray(len(decrypted_data).to_bytes(SOCKET_FULL_LENGTH_SIZE, byteorder="big") + decrypted_data))
-        if self.recv_msg_callback: self.recv_msg_callback(self, copy.deepcopy(fields))
         return fields

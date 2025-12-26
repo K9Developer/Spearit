@@ -2,6 +2,7 @@
 import base64
 from queue import Empty, Queue
 
+from models.devices.device_manager import DeviceManager
 from models.events.campaign_manager import CampaignManager
 from models.events.types.event import EventKind, ViolationResponse
 from models.events.types.packet_event import PacketDeviceInfo, PacketDirection, PacketEvent, PacketPayload, ProcessInfo
@@ -47,13 +48,7 @@ class EventManager:
             )
         )
         EventManager.event_queue.put(packet_event)
-
-    # @staticmethod
-    # def _store_event_to_db(curr_event: event_type):
-    #     db_event = curr_event.to_db()
-    #     with SessionMaker() as session:
-    #         session.add(db_event)
-    #         session.commit()
+        DeviceManager.update_device_from_packet_event(packet_event)
 
     @staticmethod
     def process_event():

@@ -10,6 +10,7 @@ AES_BLOCK_SIZE = 128
 
 SPEAR_HEAD_WRAPPER_PORT = 12345
 SPEAR_HEAD_API_PORT = 12346
+ENABLE_ENCRYPTION = True
 
 protocol_data: dict[int, ProtocolInfoEntry] = dict()
 

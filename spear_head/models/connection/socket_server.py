@@ -1,3 +1,4 @@
+import copy
 import threading
 from typing import Callable
 from models.connection.connection import Connection
@@ -46,8 +47,7 @@ class SocketServer:
             try:
                 while True:
                     fields = connection.recv_fields()
-                    if connection.recv_msg_callback:
-                        connection.recv_msg_callback(connection, fields)
+                    if connection.recv_msg_callback: connection.recv_msg_callback(connection, copy.deepcopy(fields))
             except ConnectionError:
                 connection.kill()
                 self.__handle_callback(SocketServerEvent.CONNECTION_TERMINATED, connection, Fields([]))

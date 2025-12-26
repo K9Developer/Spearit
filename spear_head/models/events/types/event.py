@@ -84,13 +84,21 @@ class BaseEvent:
             event_type = self.event_type.name,
             event_data = {},
             timestamp = self.timestamp_ns,
-            responses_taken = None
+            response_taken = None
         )
     
     def update_db(self):
+        event_id = self.event_id
         event_db = self.to_db()
         with SessionMaker() as session:
-            session.add(event_db)
-            session.commit()
-            session.refresh(event_db)
-        self.event_id = int(event_db.event_id) # type: ignore
+            if event_id is None:
+                session.add(event_db)
+                session.commit()
+                session.refresh(event_db)
+                event_id = event_db.event_id
+            else:
+                event_db.event_id = event_id  # type: ignore
+                session.merge(event_db)
+                session.commit()
+
+        self.event_id = event_id  # type: ignore

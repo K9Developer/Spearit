@@ -15,6 +15,7 @@ STRICT RULES:
 - Use MEDIUM only with concrete suspicious indicators.
 - Use HIGH only with explicit evidence of compromise or exfiltration.
 - Avoid speculative language entirely.
+- If the action that was taken against the threat is relevant, make sure to include it in the description.
 
 SEVERITY ENFORCEMENT:
 - Severity MUST be LOW unless there is explicit, unambiguous evidence of malicious activity.
@@ -76,17 +77,18 @@ Required JSON structure (exact keys only):
 {
   "name": "<short neutral name reflecting the identified application protocol, do not include details like IPs, processes, etc. max 10 words>",
   "description": "<single concise paragraph summarizing the activity using durable identifiers and extracted payload information>",
+  "detailed_description": "<a very detailed technical description of what happened, including all relevant technical details extracted from the events and payloads. Use durable identifiers only. Include software names, versions, OS details, protocol versions, etc.>",
   "severity": "<LOW|MEDIUM|HIGH>"
 }
 """
 
-def generate_campaign_details(campaign: 'Campaign') -> tuple[str, str, str]:
+def generate_campaign_details(campaign: 'Campaign') -> tuple[str, str, str, str]:
     """
     Generate a campaign name, description, and severity using a language model.
     Args:
         campaign (Campaign): The campaign instance for which to generate details.
     Returns:
-        tuple[str, str, str]: A tuple containing the generated name, description, and severity.
+        tuple[str, str, str, str]: A tuple containing the generated name, description, detailed description, and severity.
     """
 
     res = AIManager.get_json_response(SYSTEM_PROMPT, repr(campaign))
@@ -95,11 +97,12 @@ def generate_campaign_details(campaign: 'Campaign') -> tuple[str, str, str]:
         try:
             name = res["name"]
             description = res["description"]
+            detailed_description = res["detailed_description"]
             severity = res["severity"].upper()
             if severity not in ["LOW", "MEDIUM", "HIGH"]:
                 severity = "LOW"
-            return (name, description, severity)
+            return (name, description, detailed_description, severity)
         except KeyError:
             print("generate_campaign_details: Missing keys in AI response.")
 
-    return ("Unnamed Campaign", "No description available.", "medium")
+    return ("Unnamed Campaign", "No description available.", "", "LOW")

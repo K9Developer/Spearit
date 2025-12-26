@@ -52,7 +52,6 @@ class SpearHead:
             if json_heartbeat is None: raise TypeError("Invalid field type in heartbeat (json)")
             try:
                 heartbeat_data = json.loads(json_heartbeat.as_str())
-                print(f"Received Heartbeat: {heartbeat_data}")
                 HeartbeatManager.submit_heartbeat(heartbeat_data)
             except json.JSONDecodeError:
                 print("Invalid heartbeat JSON data")

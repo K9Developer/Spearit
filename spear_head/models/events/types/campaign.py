@@ -3,12 +3,13 @@ from dataclasses import dataclass
 from datetime import datetime
 from enum import Enum
 
-from sqlalchemy import Column
 from databases.db_types.campaigns.campaign_db import CampaignDB
 from databases.db_types.devices.device import get_or_create_device_db
 from databases.db_types.events.event import get_event
 from databases.engine import SessionMaker
 from models.events.types.event_type import EventType_
+from models.devices.device import Device
+from models.events.types.packet_event import PacketDirection, PacketEvent
 from utils.campaign import generate_campaign_details
 
 class CampaignStatus(Enum):
@@ -44,11 +45,13 @@ class Campaign:
     events: list[EventType_]
     name: str
     description: str | None = None
-    campaign_id: Column[int] | None = None
+    detailed_description: str | None = None
+    campaign_id: int | None = None
 
     def __init__(self) -> None:
         self.name = "Unnamed Campaign"
         self.description = "No description available."
+        self.detailed_description = ""
         self.initial_event_time = datetime.fromtimestamp(0)
         self.last_updated = datetime.fromtimestamp(0)
         self.status = CampaignStatus.ONGOING
@@ -65,6 +68,16 @@ class Campaign:
         device_id = get_or_create_device_db(event.device)[1]
         if device_id not in self.involved_device_ids:
             self.involved_device_ids.append(device_id)
+        
+        if isinstance(event, PacketEvent):
+            other_device_mac = event.dest.mac if event.direction == PacketDirection.OUTBOUND else event.source.mac
+            other_device_ip = event.dest.ip if event.direction == PacketDirection.OUTBOUND else event.source.ip
+            defd = Device.default()
+            defd.mac_address = other_device_mac
+            defd.ip_address = other_device_ip or "0.0.0.0"
+            other_device_id = get_or_create_device_db(defd)[1]
+            if other_device_id not in self.involved_device_ids:
+                self.involved_device_ids.append(other_device_id)
 
         if event_time < self.initial_event_time:
             self.initial_event_time = event_time
@@ -73,6 +86,7 @@ class Campaign:
         return CampaignDB(
             name=self.name,
             description=self.description,
+            detailed_description=self.detailed_description,
             start=self.initial_event_time,
             last_updated=self.last_updated,
             status=self.status.value,
@@ -82,17 +96,15 @@ class Campaign:
 
     def update_db(self):
         campaign_id = self.campaign_id
-        if campaign_id is None:
-            campaign_db = self.to_db()
-            with SessionMaker() as session:
+        campaign_db = self.to_db()
+        with SessionMaker() as session:
+            if campaign_id is None:
                 session.add(campaign_db)
                 session.commit()
                 session.refresh(campaign_db)
-            campaign_id = campaign_db.campaign_id
-        else:
-            with SessionMaker() as session:
-                campaign_db = self.to_db()
-                campaign_db.campaign_id = campaign_id
+                campaign_id = campaign_db.campaign_id
+            else:
+                campaign_db.campaign_id = campaign_id # type: ignore
                 session.merge(campaign_db)
                 session.commit()
 
@@ -119,14 +131,14 @@ class Campaign:
                 continue # TODO: Something is very wrong here
 
             with SessionMaker() as session:
-                event_db.campaign_id = campaign_id
+                event_db.campaign_id = campaign_id # type: ignore
                 event.campaign_id = int(campaign_id) # type: ignore
                 session.add(event_db)
                 session.commit()
     
     def close_campaign(self):
         self.status = CampaignStatus.COMPLETED
-        self.name, self.description, sev = generate_campaign_details(self)
+        self.name, self.description, self.detailed_description, sev = generate_campaign_details(self)
         self.severity = CampaignSeverity.from_str(sev)
         self.update_db()
 

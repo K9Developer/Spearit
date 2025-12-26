@@ -72,7 +72,7 @@ class PacketEvent(BaseEvent):
             violation_type=violation_type,
             violation_response=violation_response,
             event_type=EventKind.PACKET,
-            device_mac="ff:ff:ff:ff:ff:ff" # TODO: when the wrapper also attaches a mac
+            device_mac=source.mac if direction == PacketDirection.OUTBOUND else dest.mac,
         )
 
         self.protocol = protocol
@@ -158,7 +158,7 @@ class PacketEvent(BaseEvent):
                 self.timestamp_ns / 1_000_000_000,
                 tz=datetime.timezone.utc,
             ),
-            responses_taken = self.violation_response.name
+            response_taken = self.violation_response.name
         )
     
     def update_db(self):

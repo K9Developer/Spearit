@@ -39,7 +39,7 @@ def get_or_create_device_db(device: Device) -> tuple[bool, int]:
     with SessionMaker() as session:
         matching_device = session.query(DeviceDB).filter(DeviceDB.mac_address == device_mac).one_or_none()
         if matching_device is not None:
-            return (False, int(matching_device.device_id))
+            return (False, int(matching_device.device_id)) # type: ignore
         
         device_db = device.to_db()
         session.add(device_db)
@@ -50,4 +50,4 @@ def get_or_create_device_db(device: Device) -> tuple[bool, int]:
             session.rollback()
             raise e
 
-        return (True, int(device_db.device_id))
+        return (True, int(device_db.device_id)) # type: ignore
