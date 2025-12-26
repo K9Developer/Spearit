@@ -51,6 +51,8 @@ class SocketServer:
             except ConnectionError:
                 connection.kill()
                 self.__handle_callback(SocketServerEvent.CONNECTION_TERMINATED, connection, Fields([]))
+                self.clients.remove(connection)
+                Logger.debug(f"Connection terminated with {connection.addr[0]}:{connection.addr[1]} ({len(self.clients)} clients)")
             # except Exception as e:
             #     Logger.error(f"SocketServer: Error in client loop: {e}")
 
@@ -70,18 +72,19 @@ class SocketServer:
                 connection = Connection()
                 connection.socket_ = client_socket
                 connection.addr = addr
+
+                if self.__is_device_connected(connection):
+                    Logger.warn(f"Connection from {addr[0]}:{addr[1]} rejected: device already connected.")
+                    connection.kill()
+                    self.__handle_callback(SocketServerEvent.CONNECTION_FAILED_TO_ESTABLISH, connection, Fields([]))
+                    continue
+
                 self.__handle_callback(SocketServerEvent.CONNECTION_ACCEPTED, connection, Fields([]))
                 connection.callback_send_message(lambda conn, fields: self.__handle_callback(SocketServerEvent.MESSAGE_SENT, conn, fields))
                 connection.callback_recv_message(lambda conn, fields: self.__handle_callback(SocketServerEvent.MESSAGE_RECEIVED, conn, fields))
 
                 success = HandshakeMessage.handle(connection)
                 if success:
-                    if self.__is_device_connected(connection):
-                        Logger.warn(f"Connection from {addr[0]}:{addr[1]} rejected: device already connected.")
-                        connection.kill()
-                        self.__handle_callback(SocketServerEvent.CONNECTION_FAILED_TO_ESTABLISH, connection, Fields([]))
-                        continue
-
                     Logger.info(f"Connection established with {addr[0]}:{addr[1]} ({len(self.clients)+1} clients)")
                     self.clients.append(connection)
                     self.__handle_callback(SocketServerEvent.CONNECTION_ESTABLISHED, connection, Fields([]))
@@ -90,6 +93,7 @@ class SocketServer:
                     Logger.warn(f"Connection failed to establish with {addr[0]}:{addr[1]}")
                     connection.kill()
                     self.__handle_callback(SocketServerEvent.CONNECTION_FAILED_TO_ESTABLISH, connection, Fields([]))
+                    self.clients.remove(connection)
 
         threading.Thread(target=__accept_loop, daemon=True).start()
                 
