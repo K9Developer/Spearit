@@ -35,7 +35,6 @@ def same_conversation_score(p1: PacketEvent, p2: PacketEvent) -> float:
     return min(score, 1.0)
 
 def fix_event_process(campaign: Campaign, event: EventType_) -> list[PacketEvent]:
-    return [] # TODO
     # if not isinstance(event, PacketEvent): # TODO: need for others too?
     #     return []
     

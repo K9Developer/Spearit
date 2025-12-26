@@ -11,4 +11,4 @@ class DeviceDB(Base):
     last_known_ip_address = Column(String(38), nullable=True) # support ipv6 length (38)
     mac_address = Column(String(17), nullable=False, unique=True)
 
-    # TODO: Group, heartbeat
+    # TODO: Group

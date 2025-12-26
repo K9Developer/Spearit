@@ -9,9 +9,8 @@ class EventDB(Base):
     
     device_id = Column(BigInteger, ForeignKey("devices.device_id"), nullable=False)
     # rule_id = Column(BigInteger, ForeignKey("rules.rule_id"), nullable=False)
-    # campaign_id = Column(BigInteger, ForeignKey("campaigns.campaign_id"), nullable=True)
+    campaign_id = Column(BigInteger, ForeignKey("campaigns.campaign_id"), nullable=True)
     rule_id = Column(BigInteger, nullable=False) # TODO: return foreign key
-    campaign_id = Column(BigInteger, nullable=True) # TODO: return foreign key
     
     event_type = Column(String(32), nullable=False)
     event_data = Column(JSON, nullable=False)

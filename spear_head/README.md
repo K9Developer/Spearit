@@ -1,1 +1,0 @@
-TODO: Ensure in scout wrapper that the macs in each event is accurate (even packet events)
