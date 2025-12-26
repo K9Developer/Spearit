@@ -1,11 +1,14 @@
 from databases import engine
 from databases.base import Base
+from models.logger import Logger
 from spear_head import SpearHead
 from utils.ai_manager import AIManager
 
 def main():
+
     # TODO: use alembic when database structure is stable
-    print("REMEMBER: If changed table, delete DB file to recreate!")
+    Logger.warn("REMEMBER: If changed table, delete DB file to recreate!")
+    Logger.info("Initializing database...")
     Base.metadata.create_all(engine.engine)
     AIManager.init()
     sh = SpearHead()

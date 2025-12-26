@@ -2,11 +2,14 @@ from constants.constants import AI_MODEL, AI_TEMPERATURE, AI_TOP_P, AI_CONTEXT_S
 import ollama
 import json
 
+from models.logger import Logger
+
 class AIManager:
     initiated = False
 
     @staticmethod
     def init() -> None:
+        Logger.info("Initializing AI Manager...")
         ollama.pull(AI_MODEL)
         AIManager.initiated = True
     
@@ -15,7 +18,7 @@ class AIManager:
         if not AIManager.initiated:
             AIManager.init()
 
-        print("AIManager: Sending request to AI model...")
+        Logger.debug("[AIManager] Sending request to AI model...")
         response = ollama.chat(
             model=AI_MODEL,
             format='json',
@@ -30,10 +33,10 @@ class AIManager:
                 {"role": "user", "content": user_prompt}
             ],
         )
-        print(response['message']['content'])
+
         raw_res = response['message']['content']
         try:
             return json.loads(raw_res)
         except json.JSONDecodeError:
-            print("AIManager: Failed to decode JSON response from AI.")
+            Logger.error("[AIManager] Failed to decode AI response as JSON.")
             return None

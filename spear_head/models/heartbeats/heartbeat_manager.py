@@ -1,5 +1,6 @@
 from datetime import datetime
 from typing import Any
+from models.logger import Logger
 
 from databases.db_types.devices.device import is_valid_mac
 from models.devices.device_manager import DeviceManager, HeartbeatDeviceInformation
@@ -37,11 +38,12 @@ class HeartbeatManager:
     @staticmethod
     def submit_heartbeat(heartbeat_data: dict[Any, Any]) -> None:
         if "mac_address" not in heartbeat_data:
-            raise Exception("Heartbeat data must include 'mac_address' field.")
-        if heartbeat_data["mac_address"] == "00:00:00:00:00:00":
-            return # Ignore heartbeats with invalid MAC address
-        if not is_valid_mac(heartbeat_data["mac_address"]):
-            raise Exception("Invalid MAC address in heartbeat data.")
+            Logger.warn("Heartbeat data missing 'mac_address' field; ignoring heartbeat.")
+            return
+        
+        if heartbeat_data["mac_address"] == "00:00:00:00:00:00" or not is_valid_mac(heartbeat_data["mac_address"]):
+            Logger.warn(f"Heartbeat data contains invalid MAC address ({heartbeat_data['mac_address']}); ignoring heartbeat.")
+            return
         
         hb = HeartbeatManager._parse_raw_heartbeat(heartbeat_data, datetime.now())
 

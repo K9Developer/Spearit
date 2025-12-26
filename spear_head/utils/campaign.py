@@ -1,4 +1,5 @@
 from utils.ai_manager import AIManager
+from models.logger import Logger
 
 SYSTEM_PROMPT = """You are an automated security campaign analysis engine.
 
@@ -92,7 +93,6 @@ def generate_campaign_details(campaign: 'Campaign') -> tuple[str, str, str, str]
     """
 
     res = AIManager.get_json_response(SYSTEM_PROMPT, repr(campaign))
-    print("AIManager response for campaign details:", res)
     if res is not None:
         try:
             name = res["name"]
@@ -103,6 +103,7 @@ def generate_campaign_details(campaign: 'Campaign') -> tuple[str, str, str, str]
                 severity = "LOW"
             return (name, description, detailed_description, severity)
         except KeyError:
-            print("generate_campaign_details: Missing keys in AI response.")
+            Logger.error("[Campaign Generation] AI response missing required fields.")
+            
 
     return ("Unnamed Campaign", "No description available.", "", "LOW")

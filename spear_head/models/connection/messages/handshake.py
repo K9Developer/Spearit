@@ -2,6 +2,8 @@ import hashlib
 import os
 import struct
 import time
+
+from models.logger import Logger
 from constants.constants import ENABLE_ENCRYPTION
 from models.connection.base_message import BaseMessage
 from models.connection.connection import Connection
@@ -26,8 +28,9 @@ class HandshakeMessage(BaseMessage):
         # [Client --> Server] PUB
         client_pub_raw = conn.recv_fields().consume_field()
         if client_pub_raw is None or client_pub_raw.type_ !=  FieldType.RAW:
-            print("Invalid client public key field")
+            Logger.warn("[Handshake] Invalid client public key field, aborting handshake.")
             return False
+        
         client_pub = x25519.X25519PublicKey.from_public_bytes(bytes(client_pub_raw.value))
 
         # calc sess key
@@ -38,7 +41,7 @@ class HandshakeMessage(BaseMessage):
         session_key = h.digest()  # 32 bytes
         conn.session_key = session_key[:16]  # AES-128
         if ENABLE_ENCRYPTION: conn.in_encryption_mode = True
-        else: print("Encryption disabled via constants")
+        else: Logger.warn("[Handshake] Encryption is disabled! proceeding without encryption.")
 
         # [Server --> Client] timestamp encrypted
         now_raw = struct.pack(">Q", int(time.time()))
@@ -48,11 +51,12 @@ class HandshakeMessage(BaseMessage):
         # [Client --> Server] timestamp encrypted
         client_time_raw = conn.recv_fields().consume_field()
         if client_time_raw is None or client_time_raw.type_ != FieldType.RAW:
-            print("Invalid client time field")
+            Logger.warn("[Handshake] Invalid client time field, aborting handshake.")
             return False
+        
         client_time = struct.unpack(">Q", bytes(client_time_raw.value))[0]
         if abs(client_time - int(time.time())) > 5:
-            print(f"Client time difference too large ({abs(client_time - int(time.time()))}s)")
+            Logger.warn(f"[Handshake] Client time difference too large ({abs(client_time - int(time.time()))}s)")
             return False
         
         conn.set_timeout(None)
@@ -64,7 +68,7 @@ class HandshakeMessage(BaseMessage):
         try:
             return HandshakeMessage.__handle(conn)
         except Exception as e:
-            print(f"Handshake failed: {e}")
+            Logger.warn(f"[Handshake] Handshake failed (aborted): {e}")
             conn.iv = b''
             conn.session_key = b''
             conn.in_encryption_mode = False

@@ -8,6 +8,7 @@ from models.connection.socket_server import SocketServer, SocketServerEvent
 from models.events.event_manager import EventManager
 from models.events.types.event import EventKind
 from models.heartbeats.heartbeat_manager import HeartbeatManager
+from models.logger import Logger
 
 @dataclass
 class SpearHeadConfig:
@@ -27,8 +28,6 @@ class SpearHead:
         self.wrapper_server = SocketServer(self.config.wrapper_host, self.config.wrapper_port)
         self.wrapper_server.register_callback(SocketServerEvent.MESSAGE_RECEIVED, self._on_wrapper_message)
 
-        self.wrapper_server.register_callback(None, lambda event, conn, fields: print(f"Wrapper Server Event: {event}, From: {conn.addr}"))
-
     def _on_wrapper_message(self, event: SocketServerEvent, _: Connection, fields: Fields) -> None:
         if event != SocketServerEvent.MESSAGE_RECEIVED: return
         if len(fields.fields) == 0: return
@@ -39,29 +38,40 @@ class SpearHead:
         if msg_id == MessageIDs.REPORT:
             json_event_raw = fields.consume_field(FieldType.TEXT)
             if json_event_raw == None:
-                raise TypeError("Invalid field type in packet report (json)")
-            json_event = json.loads(json_event_raw.as_str())
+                Logger.warn("Invalid field type in report (json)")
+                return
+            
+            try:
+                json_event = json.loads(json_event_raw.as_str())
+            except json.JSONDecodeError:
+                Logger.warn("Failed to decode JSON event")
+                return
+            
             event_data = json_event.get("data")
             event_type = json_event.get("type")
             if event_data is None or event_type is None:
-                print("Invalid event")
+                Logger.warn("Received invalid event data")
                 return
+            
             EventManager.submit_event(event_data, EventKind.from_str(event_type))
         elif msg_id == MessageIDs.HEARTBEAT:
             json_heartbeat = fields.consume_field(FieldType.TEXT)
-            if json_heartbeat is None: raise TypeError("Invalid field type in heartbeat (json)")
+            if json_heartbeat is None:
+                Logger.warn("Invalid field type in heartbeat (json)")
+                return
             try:
                 heartbeat_data = json.loads(json_heartbeat.as_str())
                 HeartbeatManager.submit_heartbeat(heartbeat_data)
             except json.JSONDecodeError:
-                print("Invalid heartbeat JSON data")
+                Logger.warn("Failed to decode JSON heartbeat")
+                return
     
     def _tick(self) -> None:
         EventManager.process_event()
 
     def start(self) -> None:
         self.wrapper_server.accept_clients()
-        print(f"Spear Head Wrapper Server is running on {self.config.wrapper_host}:{self.config.wrapper_port}...")
+        Logger.info(f"Spear Head Wrapper Server is running on {self.config.wrapper_host}:{self.config.wrapper_port}...")
         while True:
             self._tick()
             time.sleep(0.1)

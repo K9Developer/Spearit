@@ -6,6 +6,7 @@ import socket
 from enum import Enum
 from models.connection.fields import Fields
 from models.connection.messages.handshake import HandshakeMessage
+from models.logger import Logger
 
 class SocketServerEvent(Enum):
     CONNECTION_ACCEPTED = 0
@@ -24,7 +25,6 @@ class SocketServer:
 
     def __init__(self, host: str, port: int) -> None:
         self.clients = []
-        print(f"Starting Socket Server on {host}:{port}...")
         self.socket_ = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.socket_.bind((host, port))
         self.socket_.listen()
@@ -52,7 +52,7 @@ class SocketServer:
                 connection.kill()
                 self.__handle_callback(SocketServerEvent.CONNECTION_TERMINATED, connection, Fields([]))
             # except Exception as e:
-            #     print(f"Client loop error: {e}")
+            #     Logger.error(f"SocketServer: Error in client loop: {e}")
 
         threading.Thread(target=__client_loop, daemon=True).start()
 
@@ -69,10 +69,12 @@ class SocketServer:
 
                 success = HandshakeMessage.handle(connection)
                 if success:
+                    Logger.info(f"SocketServer: Connection established with {addr[0]}:{addr[1]}")
                     self.clients.append(connection)
                     self.__handle_callback(SocketServerEvent.CONNECTION_ESTABLISHED, connection, Fields([]))
                     self.handle_client(connection)
                 else:
+                    Logger.warn(f"SocketServer: Connection failed to establish with {addr[0]}:{addr[1]}")
                     connection.kill()
                     self.__handle_callback(SocketServerEvent.CONNECTION_FAILED_TO_ESTABLISH, connection, Fields([]))
 

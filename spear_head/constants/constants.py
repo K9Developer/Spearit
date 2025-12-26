@@ -1,5 +1,6 @@
 from models.events.types.packet_event import ProtocolInfoEntry
 
+DEBUG = True
 
 INT_FIELD_SIZE = 8 # 64 bit
 

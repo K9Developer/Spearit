@@ -10,6 +10,7 @@ from databases.engine import SessionMaker
 from models.events.types.event_type import EventType_
 from models.devices.device import Device
 from models.events.types.packet_event import PacketDirection, PacketEvent
+from models.logger import Logger
 from utils.campaign import generate_campaign_details
 
 class CampaignStatus(Enum):
@@ -115,20 +116,20 @@ class Campaign:
                 continue
 
             if event.campaign_id is not None:
-                print("Warning: Event already associated with a different campaign!")
-                continue # TODO: Something is very wrong here
+                Logger.warn(f"Event ID {event.event_id} already associated with Campaign ID {event.campaign_id}, cannot reassign to Campaign ID {campaign_id}.")
+                continue
 
             if event.event_id is None:
                 event.update_db()
             
             if event.event_id is None:
-                print("Error: Event ID is still None after update_db!")
-                continue # TODO: Something is very wrong here
+                Logger.error("Event ID is still None after update_db call.")
+                continue
             
             event_db = get_event(event.event_id)
             if event_db is None:
-                print("Error: Could not retrieve EventDB from database!")
-                continue # TODO: Something is very wrong here
+                Logger.error("Failed to retrieve event from DB after update_db call.")
+                continue
 
             with SessionMaker() as session:
                 event_db.campaign_id = campaign_id # type: ignore

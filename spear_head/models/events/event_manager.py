@@ -55,15 +55,11 @@ class EventManager:
         try:
             curr_event = EventManager.event_queue.get(block = False)
             curr_event.update_db()
-            print(f"Storing event to DB: {curr_event}")
             CampaignManager.process_event(curr_event)
 
         except Empty:
             return
         
-        print(f"Processing: {curr_event}")
-
-
     @staticmethod
     def submit_event(json_event: dict[str, str | dict[str, str]], type_: EventKind) -> bool:
         # try:
@@ -74,5 +70,5 @@ class EventManager:
             
             return True
         # except Exception as e:
-        #     print(f"Failed to submit event: {e}")
+        #     Logger.error(f"Failed to submit event: {e}")
         #     return False

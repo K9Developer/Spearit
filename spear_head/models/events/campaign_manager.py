@@ -1,4 +1,6 @@
 from datetime import datetime
+
+from models.logger import Logger
 from databases.engine import SessionMaker
 from models.events.types.packet_event import PacketEvent
 from models.events.types.event import EventKind
@@ -66,11 +68,11 @@ class CampaignManager:
 
         for camp_index, campaign in enumerate(CampaignManager.ongoing_campaigns):
 
-            print("Campain last updated seconds ago:",abs(datetime.now().timestamp() - campaign.last_updated.timestamp()))
             if abs(datetime.now().timestamp() - campaign.last_updated.timestamp()) > CAMPAIGN_ONGOING_TIMEOUT:
-                print("Closing campaign due to timeout:", campaign.name)
+                Logger.debug(f"Closing campaign...")
                 campaign.close_campaign()
                 CampaignManager.ongoing_campaigns.pop(camp_index)
+                Logger.debug(f"Closed campaign ID {campaign.campaign_id} due to inactivity.")
             
             score = CampaignManager._score_campaign_match(event, campaign)
             if score > best_score:
@@ -78,7 +80,6 @@ class CampaignManager:
                 best_campaign = campaign
 
         if best_campaign is not None and best_score * 100 >= CAMPAIGN_MATCH_SCORE_THRESHOLD:
-            print("Adding event to existing campaign with score:", best_score)
             changed_events = fix_event_process(best_campaign, event)
             for changed_event in changed_events:
                 if changed_event.event_id is None: continue
@@ -91,7 +92,7 @@ class CampaignManager:
             best_campaign.add_event(event)
             best_campaign.update_db()
         else:
-            print("Creating new campaign for event")
+            Logger.debug("Creating new campaign for event.")
             new_campaign = Campaign()
             new_campaign.add_event(event)
             new_campaign.update_db()

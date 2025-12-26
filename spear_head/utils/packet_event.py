@@ -59,4 +59,4 @@ def fix_event_process(campaign: Campaign, event: EventType_) -> list[PacketEvent
     #     ev.process.name = chosen_event_name
 
     # return events_to_rename
-        
+    return []        
