@@ -1,6 +1,9 @@
+
+from models.logger import Logger
+
+Logger.info("Starting SpearHead application...")
 from databases import engine
 from databases.base import Base
-from models.logger import Logger
 from spear_head import SpearHead
 from utils.ai_manager import AIManager
 

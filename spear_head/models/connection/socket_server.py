@@ -56,6 +56,13 @@ class SocketServer:
 
         threading.Thread(target=__client_loop, daemon=True).start()
 
+    def __is_device_connected(self, connection: Connection) -> bool:
+        conn_ip = connection.addr[0]
+        for client in self.clients:
+            if client.addr[0] == conn_ip and client != connection:
+                return True
+        return False
+
     def accept_clients(self) -> None:
         def __accept_loop():
             while True:
@@ -69,12 +76,18 @@ class SocketServer:
 
                 success = HandshakeMessage.handle(connection)
                 if success:
-                    Logger.info(f"SocketServer: Connection established with {addr[0]}:{addr[1]}")
+                    if self.__is_device_connected(connection):
+                        Logger.warn(f"Connection from {addr[0]}:{addr[1]} rejected: device already connected.")
+                        connection.kill()
+                        self.__handle_callback(SocketServerEvent.CONNECTION_FAILED_TO_ESTABLISH, connection, Fields([]))
+                        continue
+
+                    Logger.info(f"Connection established with {addr[0]}:{addr[1]} ({len(self.clients)+1} clients)")
                     self.clients.append(connection)
                     self.__handle_callback(SocketServerEvent.CONNECTION_ESTABLISHED, connection, Fields([]))
                     self.handle_client(connection)
                 else:
-                    Logger.warn(f"SocketServer: Connection failed to establish with {addr[0]}:{addr[1]}")
+                    Logger.warn(f"Connection failed to establish with {addr[0]}:{addr[1]}")
                     connection.kill()
                     self.__handle_callback(SocketServerEvent.CONNECTION_FAILED_TO_ESTABLISH, connection, Fields([]))
 
