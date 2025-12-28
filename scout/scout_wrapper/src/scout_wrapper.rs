@@ -9,7 +9,7 @@ use crate::models::connection::messages::handshake::HandshakeMessage;
 use crate::models::heartbeat::heartbeat::{Heartbeat, NetworkDetails, SystemMetrics};
 use crate::models::shared_types::network_info::NetworkInfo;
 use crate::{
-    constants::GLOBAL_STATE,
+    constants::{GLOBAL_STATE, RULE_REQUEST_INTERVAL},
     log_bpf, log_debug, log_error, log_info, log_warn,
     models::{
         connection::connection::Connection,
@@ -42,28 +42,30 @@ pub struct ScoutWrapper {
 
     rules: Vec<Rule>,
 
-    last_heartbeat_time: std::time::Instant,
+    last_heartbeat_time: std::time::Instant, // TODO: Have some kind of module time these requests better
+    last_rule_request_time: std::time::Instant,
+
     current_heartbeat: Heartbeat,
 }
 
 impl ScoutWrapper {
-    fn load_rules(json_file: PathBuf) -> Vec<Rule> {
-        log_debug!("Loading rules from {:?}", json_file);
-        let start = std::time::Instant::now();
-        let file = std::fs::File::open(json_file).unwrap();
-        let raw_rules: Vec<RawRule> = serde_json::from_reader(file).unwrap();
-        let mut rules = vec![];
-        for raw_rule in raw_rules {
-            let rule = raw_rule.compile();
-            rules.push(rule);
-        }
-        log_debug!(
-            "Loaded {} rule(s) in {:.2} ms",
-            rules.len(),
-            start.elapsed().as_secs_f64() * 1000.0
-        );
-        rules
-    }
+    // fn load_rules(json_file: PathBuf) -> Vec<Rule> {
+    //     log_debug!("Loading rules from {:?}", json_file);
+    //     let start = std::time::Instant::now();
+    //     let file = std::fs::File::open(json_file).unwrap();
+    //     let raw_rules: Vec<RawRule> = serde_json::from_reader(file).unwrap();
+    //     let mut rules = vec![];
+    //     for raw_rule in raw_rules {
+    //         let rule = raw_rule.compile();
+    //         rules.push(rule);
+    //     }
+    //     log_debug!(
+    //         "Loaded {} rule(s) in {:.2} ms",
+    //         rules.len(),
+    //         start.elapsed().as_secs_f64() * 1000.0
+    //     );
+    //     rules
+    // }
 
     pub fn new(spear_head_addr: &str) -> ScoutWrapper {
         std::thread::spawn(|| {
@@ -80,11 +82,9 @@ impl ScoutWrapper {
             spear_head_addr: spear_head_addr.to_string(),
             loader_process: None,
             last_heartbeat_time: time,
-            rules: ScoutWrapper::load_rules(Path::new("/home/k9dev/Coding/Products/Spearit/scout/scout_wrapper/src/dynamic/rules.json").to_path_buf()),
-            current_heartbeat: Heartbeat::generate(
-                NetworkDetails::new(),
-                SystemMetrics::new(),
-            ),
+            last_rule_request_time: time,
+            rules: vec![],
+            current_heartbeat: Heartbeat::generate(NetworkDetails::new(), SystemMetrics::new()),
         }
     }
 
@@ -158,22 +158,22 @@ impl ScoutWrapper {
         }
     }
 
-    pub fn loader_handler_tick(&mut self) {
+    pub fn loader_handler_tick(&mut self) -> Result<(), String> {
         if self.state == ScoutWrapperState::Connected {
             if !self.spearhead_conn.is_connected() {
                 log_warn!("Connection to Spearhead lost.");
                 self.state = ScoutWrapperState::NotConnected;
-                return;
+                return Err("Connection to Spearhead lost.".to_string());
             }
         }
 
         if self.state == ScoutWrapperState::NotConnected {
             self.connect_spearhead();
-            return;
+            return Ok(());
         }
 
         if self.state != ScoutWrapperState::Connected {
-            return;
+            return Ok(());
         }
 
         self.current_heartbeat.system_metrics.update();
@@ -195,14 +195,33 @@ impl ScoutWrapper {
             self.current_heartbeat.reset();
         }
 
+        if self.last_rule_request_time.elapsed().as_secs() >= RULE_REQUEST_INTERVAL {
+            let fields = FieldsBuilder::new()
+                .add_str(MessageIDs::REQ_RULE_UPDATE.to_string())
+                .build();
+            match self.spearhead_conn.send_fields(fields) {
+                Ok(_) => {
+                    log_debug!("Sent rule update request to Spearhead.");
+                    self.last_rule_request_time = std::time::Instant::now();
+                }
+                Err(e) => {
+                    log_error!(
+                        "Failed to send rule update request to Spearhead. Error: {:?}",
+                        e
+                    );
+                }
+            }
+            self.last_rule_request_time = std::time::Instant::now();
+        }
+
+        // read from loader shared memory
         unsafe {
             let res = self.loader_conn.read(-1);
             if res.is_none() {
-                return;
+                return Ok(());
             }
             let res = res.unwrap();
             let req_id = CommID::from_u32(res.request_id);
-            log_warn!("Received loader request ID: {:?}", req_id);
             match req_id {
                 Some(CommID::ReqActiveRuleIds) => {
                     log_debug!("Received active rule IDs request from loader.");
@@ -255,7 +274,7 @@ impl ScoutWrapper {
                 Some(CommID::ResRuleViolation) => {
                     if res.size < std::mem::size_of::<Report>() {
                         log_warn!("Received rule violation data is too small.");
-                        return;
+                        return Ok(());
                     }
                     let report = unsafe { std::ptr::read(res.data.as_ptr() as *const Report) };
                     match report.type_ {
@@ -289,7 +308,7 @@ impl ScoutWrapper {
                 Some(CommID::ResNetworkInfoUpdate) => {
                     if res.size < std::mem::size_of::<NetworkInfo>() {
                         log_warn!("Received network info update data is too small.");
-                        return;
+                        return Ok(());
                     }
                     let net_info =
                         unsafe { std::ptr::read(res.data.as_ptr() as *const NetworkInfo) };
@@ -303,6 +322,39 @@ impl ScoutWrapper {
                 }
             }
         }
+
+        // read from spearhead connection
+        let mut fields = self
+            .spearhead_conn
+            .recv_fields_non_blocking()
+            .map_err(|_| "Failed to receive fields from Spearhead.".to_string())?;
+        let msg_id = fields
+            .consume_text_field()
+            .map_err(|_| "Failed to read message ID from Spearhead.".to_string())?;
+        match msg_id.as_str().as_str() {
+            MessageIDs::RULES_RESPONSE => {
+                let rules_json = fields
+                    .consume_text_field()
+                    .expect("Failed to read rules JSON");
+                log_info!("Received rules update from Spearhead.");
+                let raw_rules: Vec<RawRule> =
+                    serde_json::from_str(rules_json.as_str().as_str()).unwrap();
+                let mut new_rules = vec![];
+                for raw_rule in raw_rules {
+                    let rule = raw_rule.compile();
+                    new_rules.push(rule);
+                }
+                self.rules = new_rules;
+                self.print_rules();
+            }
+            _ => {
+                log_warn!(
+                    "Received unknown message ID from Spearhead: {}",
+                    msg_id.as_str()
+                );
+            }
+        }
+        Ok(())
     }
 
     pub fn shutdown_ebpf(&mut self) {

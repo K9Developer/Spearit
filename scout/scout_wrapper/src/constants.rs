@@ -97,11 +97,14 @@ pub mod term {
 pub mod MessageIDs {
     pub const REPORT: &'static str = "RPRT";
     pub const HEARTBEAT: &'static str = "HRTB";
+    pub const REQ_RULE_UPDATE: &'static str = "RQRL";
+    pub const RULES_RESPONSE: &'static str = "RSLR";
 }
 
-// TODO: Larger value (about 20 minutes)
+// TODO: Larger values
 pub const HEARTBEAT_INTERVAL: u64 = 60; // seconds
 pub const SYSTEM_METRICS_INTERVAL: u64 = 5; // seconds
+pub const RULE_REQUEST_INTERVAL: u64 = 30 * 60; // seconds
 
 pub const MAX_PROCESS_NAME_LENGTH: usize = 16;
 pub const MAX_NETWORK_RECORDS: usize = 32;
