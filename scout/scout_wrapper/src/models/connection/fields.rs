@@ -65,6 +65,22 @@ impl Field {
     pub fn value(&self) -> Vec<u8> {
         self.value.clone()
     }
+
+    pub fn as_str(&self) -> String {
+        match String::from_utf8(self.value.clone()) {
+            Ok(s) => s,
+            Err(e) => String::new(),
+        }
+    }
+
+    pub fn as_int(&self) -> i64 {
+        if self.value.len() != 8 {
+            log_error!("Field value length is not 8 bytes for int conversion");
+            return 0;
+        }
+        let arr: [u8; 8] = self.value.clone().try_into().unwrap_or([0; 8]);
+        i64::from_be_bytes(arr)
+    }
 }
 
 impl Debug for Field {

@@ -16,6 +16,8 @@ pub struct Connection {
     in_encrypt_mode: bool,
 
     socket: Option<TcpStream>,
+
+    pending_data: Vec<u8>,
 }
 
 impl Connection {
@@ -25,6 +27,8 @@ impl Connection {
             session_key: [0; 16],
             in_encrypt_mode: false,
             socket: None,
+
+            pending_data: vec![],
         }
     }
 
@@ -85,11 +89,63 @@ impl Connection {
 
     fn recv_exact(&mut self, size: usize) -> io::Result<Vec<u8>> {
         let mut buf = vec![0u8; size];
+
+        let mut bytes_to_read = size;
+        if self.pending_data.len() > 0 {
+            let to_copy = bytes_to_read.min(self.pending_data.len());
+            buf[..to_copy].copy_from_slice(&self.pending_data[..to_copy]);
+            self.pending_data.drain(..to_copy);
+            bytes_to_read -= to_copy;
+        }
+
         match &mut self.socket {
             None => panic!("Connection not established yet"),
-            Some(soc) => soc.read_exact(buf.as_mut_slice())?,
+            Some(soc) => soc.read_exact(&mut buf[size - bytes_to_read..])?,
         }
         Ok(buf)
+    }
+
+    fn recv_exact_non_blocking(&mut self, size: usize) -> Result<Vec<u8>, ()> {
+        let res = match &mut self.socket {
+            None => Err(()),
+            Some(soc) => {
+                soc.set_read_timeout(Some(std::time::Duration::from_millis(5)))
+                    .map_err(|_| ())?;
+                while self.pending_data.len() < size {
+                    let mut tmp = [0u8; 4096];
+
+                    match soc.read(&mut tmp) {
+                        Ok(0) => {
+                            return Err(());
+                        }
+                        Ok(n) => {
+                            self.pending_data.extend_from_slice(&tmp[..n]);
+                        }
+                        Err(e)
+                            if e.kind() == ErrorKind::WouldBlock
+                                || e.kind() == ErrorKind::TimedOut =>
+                        {
+                            log_warn!("Socket would block or timed out");
+                            return Err(());
+                        }
+                        Err(e) => return Err(()),
+                    }
+                }
+
+                let out = self.pending_data[..size].to_vec();
+                self.pending_data.drain(..size);
+                Ok(out)
+            }
+        };
+
+        match &self.socket {
+            None => {}
+            Some(soc) => {
+                soc.set_read_timeout(None).map_err(|_| ())?;
+            }
+        }
+
+        res
     }
 
     fn send_raw(&mut self, data: &[u8]) -> io::Result<()> {
@@ -135,6 +191,26 @@ impl Connection {
             }
         }
         Fields::from_bytes(raw_fields.as_slice())
+    }
+
+    pub fn recv_fields_non_blocking(&mut self) -> Result<Fields, ()> {
+        let total_length_bytes = self
+            .recv_exact_non_blocking(SOCKET_FULL_LENGTH_SIZE)
+            .map_err(|_| ())?;
+        let total_length =
+            usize::from_be_bytes(total_length_bytes.as_slice().try_into().map_err(|_| ())?);
+        let raw_fields = self.recv_exact_non_blocking(total_length)?;
+        if self.in_encrypt_mode {
+            let dec = self.get_cipher_dec();
+            let mut out = dec.decrypt_padded_vec_mut::<Pkcs7>(raw_fields.as_slice());
+            match out {
+                Err(_) => {
+                    return Err(());
+                }
+                Ok(o) => return Fields::from_bytes(o.as_slice()).map_err(|_| ()),
+            }
+        }
+        Fields::from_bytes(raw_fields.as_slice()).map_err(|_| ())
     }
 
     pub fn is_connected(&mut self) -> bool {
