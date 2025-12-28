@@ -3,12 +3,13 @@ import time
 from dataclasses import dataclass
 from constants.constants import SPEAR_HEAD_API_PORT, SPEAR_HEAD_WRAPPER_PORT, MessageIDs
 from models.connection.connection import Connection
-from models.connection.fields import FieldType, Fields
+from models.connection.fields import Field, FieldType, Fields
 from models.connection.socket_server import SocketServer, SocketServerEvent
 from models.events.event_manager import EventManager
 from models.events.types.event import EventKind
 from models.heartbeats.heartbeat_manager import HeartbeatManager
 from models.logger import Logger
+from models.rules.rule_manager import RuleManager
 
 @dataclass
 class SpearHeadConfig:
@@ -28,7 +29,7 @@ class SpearHead:
         self.wrapper_server = SocketServer(self.config.wrapper_host, self.config.wrapper_port)
         self.wrapper_server.register_callback(SocketServerEvent.MESSAGE_RECEIVED, self._on_wrapper_message)
 
-    def _on_wrapper_message(self, event: SocketServerEvent, _: Connection, fields: Fields) -> None:
+    def _on_wrapper_message(self, event: SocketServerEvent, conn: Connection, fields: Fields) -> None:
         if event != SocketServerEvent.MESSAGE_RECEIVED: return
         if len(fields.fields) == 0: return
         msg_id = fields.consume_field(FieldType.TEXT)
@@ -65,6 +66,13 @@ class SpearHead:
             except json.JSONDecodeError:
                 Logger.warn("Failed to decode JSON heartbeat")
                 return
+        elif msg_id == MessageIDs.REQUEST_RULES:
+            raw_rules = RuleManager.get_raw_rules_json()
+            response_fields = Fields([
+                Field(FieldType.TEXT, MessageIDs.RULES_RESPONSE),
+                Field(FieldType.TEXT, raw_rules)
+            ])
+            conn.send_fields(response_fields)
     
     def _tick(self) -> None:
         EventManager.process_event()

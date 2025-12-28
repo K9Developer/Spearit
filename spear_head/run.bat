@@ -1,2 +1,1 @@
-del databases\presistant\spearit.db
-python -B main.py
+del databases\presistant\spearit.db && python -B main.py
