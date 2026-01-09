@@ -15,7 +15,9 @@ class Device:
     ip_address: str
     mac_address: str
     group: None # TODO
-    last_heartbeat: Heartbeat | None # cant import Heartbeat here to avoid circular import
+    last_heartbeat: Heartbeat | None
+    handlers: list[int] = []
+    note: str = ""
 
     device_id: int | None = None
 
@@ -49,7 +51,9 @@ class Device:
             device_name=self.device_name,
             operating_system_details=self.os_details,
             last_known_ip_address=self.ip_address,
-            mac_address=self.mac_address
+            mac_address=self.mac_address,
+            handlers=self.handlers,
+            note=self.note,
         )
 
     def update_db(self):

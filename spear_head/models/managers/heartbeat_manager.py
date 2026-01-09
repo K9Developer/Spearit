@@ -3,7 +3,7 @@ from typing import Any
 from models.logger import Logger
 
 from databases.db_types.devices.device import is_valid_mac
-from models.devices.device_manager import DeviceManager, HeartbeatDeviceInformation
+from models.managers.device_manager import DeviceManager, HeartbeatDeviceInformation
 from models.heartbeats.heartbeat import Heartbeat
 from models.heartbeats.heartbeat_types import HeartbeatNetworkDetails, HeartbeatSystemMetrics
 

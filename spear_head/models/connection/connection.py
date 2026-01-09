@@ -1,4 +1,3 @@
-import copy
 import socket
 from typing import Callable
 from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes

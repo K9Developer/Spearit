@@ -2,8 +2,8 @@
 import base64
 from queue import Empty, Queue
 
-from models.devices.device_manager import DeviceManager
-from models.events.campaign_manager import CampaignManager
+from models.managers.device_manager import DeviceManager
+from models.managers.campaign_manager import CampaignManager
 from models.events.types.event import EventKind, ViolationResponse
 from models.events.types.packet_event import PacketDeviceInfo, PacketDirection, PacketEvent, PacketPayload, ProcessInfo
 from models.events.types.event_type import EventType_

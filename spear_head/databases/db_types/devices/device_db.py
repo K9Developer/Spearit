@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, ForeignKey, String, DateTime, JSON, func
+from sqlalchemy import JSON, Column, Integer, String
 from databases.base import Base
 
 class DeviceDB(Base):
@@ -11,4 +11,7 @@ class DeviceDB(Base):
     last_known_ip_address = Column(String(38), nullable=True) # support ipv6 length (38)
     mac_address = Column(String(17), nullable=False, unique=True)
 
+    handlers = Column(JSON, nullable=True) # list of user ids
+    note = Column(String(250), nullable=True)
+    
     # TODO: Group

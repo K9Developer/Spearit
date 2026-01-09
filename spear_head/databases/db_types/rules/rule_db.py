@@ -16,3 +16,6 @@ class RuleDB(Base):
     rule_name = Column(String(64), nullable=False)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     priority = Column(Integer, nullable=False, default=0)
+    
+    handlers = Column(JSON, nullable=True) # list of user ids
+    description = Column(String(500), nullable=True)

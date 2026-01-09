@@ -19,7 +19,7 @@ class AIManager:
             AIManager.init()
 
         Logger.debug("[AIManager] Sending request to AI model...")
-        response = ollama.chat(
+        response = ollama.chat( # type: ignore
             model=AI_MODEL,
             format='json',
             options={

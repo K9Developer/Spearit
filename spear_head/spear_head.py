@@ -5,9 +5,9 @@ from constants.constants import SPEAR_HEAD_API_PORT, SPEAR_HEAD_WRAPPER_PORT, Me
 from models.connection.connection import Connection
 from models.connection.fields import Field, FieldType, Fields
 from models.connection.socket_server import SocketServer, SocketServerEvent
-from models.events.event_manager import EventManager
+from models.managers.event_manager import EventManager
 from models.events.types.event import EventKind
-from models.heartbeats.heartbeat_manager import HeartbeatManager
+from models.managers.heartbeat_manager import HeartbeatManager
 from models.logger import Logger
 from models.rules.rule_manager import RuleManager
 

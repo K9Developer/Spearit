@@ -19,6 +19,9 @@ class Rule:
         self.created_at: datetime.datetime = datetime.datetime.now()
         self.name = name
         self.author = author_id
+
+        self.handlers: list[int] = []
+        self.description: str = ""
     
     def to_db(self) -> RuleDB:
         return RuleDB(
@@ -31,7 +34,9 @@ class Rule:
             is_active=self.is_active,
             rule_name=self.name,
             priority=self.priority,
-            created_at=self.created_at
+            created_at=self.created_at,
+            handlers=self.handlers,
+            description=self.description,
         )
    
     def update_db(self):

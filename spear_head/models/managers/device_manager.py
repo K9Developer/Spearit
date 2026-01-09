@@ -34,7 +34,9 @@ class DeviceManager:
                     device_name=device_info.device_name or "Unknown Device",
                     operating_system_details=device_info.os_details or "Unknown OS",
                     last_known_ip_address=device_info.ip_address or "0.0.0.0",
-                    mac_address=device_info.mac_address
+                    mac_address=device_info.mac_address,
+                    handlers=[],
+                    note="",
                 )
                 session.add(new_device)
                 session.commit()
