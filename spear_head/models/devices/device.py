@@ -1,5 +1,7 @@
 from __future__ import annotations
 from typing import TYPE_CHECKING
+
+from models.managers.heartbeat_manager import HeartbeatManager
 if TYPE_CHECKING: from models.heartbeats.heartbeat import Heartbeat  # type-only
 
 from dataclasses import dataclass
@@ -14,7 +16,7 @@ class Device:
     os_details: str
     ip_address: str
     mac_address: str
-    group: None # TODO
+    groups: list[int]
     last_heartbeat: Heartbeat | None
     handlers: list[int] = []
     note: str = ""
@@ -22,7 +24,7 @@ class Device:
     device_id: int | None = None
 
     def __str__(self) -> str:
-        group = self.group if self.group is not None else "ungrouped"
+        groups = self.groups if self.groups else "ungrouped"
         heartbeat = (
             self.last_heartbeat
             if self.last_heartbeat is not None
@@ -35,11 +37,25 @@ class Device:
             f"os={self.os_details}, "
             f"ip={self.ip_address}, "
             f"mac={self.mac_address}, "
-            f"group={group}, "
+            f"groups={groups}, "
             f"last_heartbeat={heartbeat}"
             f")"
         )
     
+    @staticmethod
+    def from_db(device_db: DeviceDB) -> "Device":
+        return Device(
+            device_name=device_db.device_name or "Unknown Device", # type: ignore
+            os_details=device_db.operating_system_details or "Unknown OS", # type: ignore
+            ip_address=device_db.last_known_ip_address or "0.0.0.0", # type: ignore
+            mac_address=device_db.mac_address, # type: ignore
+            groups=device_db.groups, # type: ignore
+            last_heartbeat=HeartbeatManager.get_heartbeat_by_id(device_db.last_heartbeat_id), # type: ignore
+            handlers=device_db.handlers or [], # type: ignore
+            note=device_db.note or "", # type: ignore 
+            device_id=device_db.device_id, # type: ignore
+        )
+
     def to_db(self) -> DeviceDB:
         """
         Convert this Device model instance to a DeviceDB instance.
@@ -77,6 +93,6 @@ class Device:
             os_details="Unknown OS",
             ip_address="0.0.0.0",
             mac_address="00:00:00:00:00:00",
-            group=None,
+            groups=[],
             last_heartbeat=None
         )

@@ -1,12 +1,15 @@
 from datetime import datetime
+from typing import Generator
 
+from databases.db_types.campaigns.campaign_db import CampaignDB
 from models.logger import Logger
 from databases.engine import SessionMaker
 from models.events.types.packet_event import PacketEvent
 from models.events.types.event import EventKind
-from models.events.types.campaign import Campaign
+from models.events.types.campaign import Campaign, CampaignSeverity
 from models.events.types.event_type import EventType_
 from constants.constants import CAMPAIGN_MATCH_SCORE_THRESHOLD, CAMPAIGN_ONGOING_TIMEOUT
+from models.managers.event_manager import EventManager
 from utils.packet_event import fix_event_process, same_conversation_score
 
 # TODO: Merge campaigns
@@ -62,7 +65,7 @@ class CampaignManager:
         return total_score / len(campaign.events)
 
     @staticmethod
-    def process_event(event: EventType_):
+    def _process_event(event: EventType_):
         best_campaign: Campaign | None = None
         best_score = 0.0
 
@@ -91,6 +94,7 @@ class CampaignManager:
 
             best_campaign.add_event(event)
             best_campaign.update_db()
+            event.update_db()
         else:
             Logger.debug("Creating new campaign for event.")
             new_campaign = Campaign()
@@ -99,6 +103,69 @@ class CampaignManager:
             CampaignManager.ongoing_campaigns.append(new_campaign)
     
     @staticmethod
-    def process_campaigns():
+    def _process_campaigns():
         pass # TODO: merge campaigns into bigger campaigns
+
+    # --------- Public Methods ---------
+
+    @staticmethod
+    def get_ongoing_campaigns() -> list[Campaign]:
+        return CampaignManager.ongoing_campaigns
+    
+    @staticmethod
+    def get_all_campaigns() -> Generator[Campaign, None, None]:
+        with SessionMaker() as session:
+            campaign_dbs = session.query(CampaignDB).all()
+            for campaign_db in campaign_dbs:
+                campaign = Campaign.from_db(campaign_db)
+                yield campaign
+             
+    @staticmethod
+    def get_campaign_by_id(campaign_id: int) -> Campaign | None:
+        for campaign in CampaignManager.get_all_campaigns():
+            if campaign.campaign_id == campaign_id:
+                return campaign
+        return None
+    
+    @staticmethod
+    def rename_campaign(campaign_id: int, new_name: str) -> bool:
+        campaign = CampaignManager.get_campaign_by_id(campaign_id)
+        if campaign is None:
+            return False
+        campaign.name = new_name
+        campaign.update_db()
+        return True
+    
+    @staticmethod
+    def change_campaign_severity(campaign_id: int, new_severity: str) -> bool:
+        campaign = CampaignManager.get_campaign_by_id(campaign_id)
+        if campaign is None:
+            return False
+        campaign.severity = CampaignSeverity.from_str(new_severity)
+        campaign.update_db()
+        return True
+    
+    @staticmethod
+    def change_campaign_description(campaign_id: int, new_description: str) -> bool:
+        campaign = CampaignManager.get_campaign_by_id(campaign_id)
+        if campaign is None:
+            return False
+        campaign.description = new_description
+        campaign.update_db()
+        return True
+    
+    @staticmethod
+    def move_event_to_campaign(campaign_id: int, event_id: int) -> bool:
+        campaign = CampaignManager.get_campaign_by_id(campaign_id)
+        if campaign is None:
+            return False
+        
+        event = EventManager.get_event_by_id(event_id)
+        if event is None:
+            return False
+        
+        campaign.add_event(event)
+        event.update_db()
+        campaign.update_db()
+        return True
         

@@ -4,5 +4,6 @@
   "reportUnknownParameterType": "warning",
   "reportUnknownArgumentType": "warning",
   "reportUnknownVariableType": "warning",
-  "reportImplicitAny": "warning"
+  "reportImplicitAny": "warning",
+  "reportPrivateUsage": "warning"
 }

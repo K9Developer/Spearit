@@ -54,7 +54,7 @@ class SpearHead:
                 Logger.warn("Received invalid event data")
                 return
             
-            EventManager.submit_event(event_data, EventKind.from_str(event_type))
+            EventManager._submit_event(event_data, EventKind.from_str(event_type))
         elif msg_id == MessageIDs.HEARTBEAT:
             json_heartbeat = fields.consume_field(FieldType.TEXT)
             if json_heartbeat is None:
@@ -62,7 +62,7 @@ class SpearHead:
                 return
             try:
                 heartbeat_data = json.loads(json_heartbeat.as_str())
-                HeartbeatManager.submit_heartbeat(heartbeat_data)
+                HeartbeatManager._submit_heartbeat(heartbeat_data)
             except json.JSONDecodeError:
                 Logger.warn("Failed to decode JSON heartbeat")
                 return
@@ -75,7 +75,7 @@ class SpearHead:
             conn.send_fields(response_fields)
     
     def _tick(self) -> None:
-        EventManager.process_event()
+        EventManager._process_event()
 
     def start(self) -> None:
         self.wrapper_server.accept_clients()

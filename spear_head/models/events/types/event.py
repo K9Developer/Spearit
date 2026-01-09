@@ -5,6 +5,7 @@ from databases.db_types.events.event_db import EventDB
 from databases.db_types.devices.device import get_or_create_device_db
 from databases.engine import SessionMaker
 from models.devices.device import Device
+from models.managers.device_manager import DeviceManager
 
 class ViolationType(Enum):
     PACKET = 0
@@ -17,6 +18,11 @@ class EventKind(Enum):
     def from_str(s: str) -> 'EventKind':
         if s == "packet": return EventKind.PACKET
         return EventKind.PACKET
+    
+    @staticmethod
+    def to_str(kind: 'EventKind') -> str:
+        if kind == EventKind.PACKET: return "packet"
+        return "packet"
 
 class ViolationResponse(Enum):
     AIR_GAP = 0
@@ -59,14 +65,10 @@ class BaseEvent:
         self.violation_response = violation_response
         self.event_type = event_type
         self.timestamp_ns = timestamp_ns
-        self.device = Device(
-            device_name="unknown",
-            os_details="unknown",
-            ip_address="unknown",
-            mac_address=device_mac,
-            group=None,
-            last_heartbeat=None
-        )
+        dvc = DeviceManager.get_device_by_mac(device_mac) 
+        if dvc is None:
+            dvc = DeviceManager._create_device(mac_address=device_mac)
+        self.device = dvc
         self.event_id = None
         self.campaign_id = None
     
@@ -102,3 +104,34 @@ class BaseEvent:
                 session.commit()
 
         self.event_id = event_id  # type: ignore
+
+    @staticmethod
+    def from_db(event_db: EventDB) -> 'BaseEvent':
+        """
+        Create a BaseEvent instance from an EventDB instance.
+        
+        Args:
+            event_db (EventDB): The EventDB instance to convert.
+
+        Returns:
+            BaseEvent: The corresponding BaseEvent instance.
+        """ 
+
+        device = DeviceManager.get_device_by_id(event_db.device_id) # type: ignore
+        if device is None:
+            raise ValueError(f"Device with ID {event_db.device_id} not found.")
+        
+        event = BaseEvent(
+            timestamp_ns=event_db.timestamp, # type: ignore
+            violated_rule_id=event_db.rule_id, # type: ignore
+            violation_type=ViolationType.PACKET,
+            violation_response=ViolationResponse.from_str(event_db.response_taken) if event_db.response_taken is not None else ViolationResponse.ALERT, # type: ignore
+            event_type=EventKind.from_str(event_db.event_type), # type: ignore
+            device_mac=device.mac_address # type: ignore
+        )
+
+        event.event_id = event_db.event_id # type: ignore
+        event.campaign_id = event_db.campaign_id # type: ignore
+        event.device = device
+
+        return event
