@@ -10,7 +10,7 @@ from models.events.types.campaign import Campaign, CampaignSeverity
 from models.events.types.event_type import EventType_
 from constants.constants import CAMPAIGN_MATCH_SCORE_THRESHOLD, CAMPAIGN_ONGOING_TIMEOUT
 from models.managers.event_manager import EventManager
-from utils.packet_event import fix_event_process, same_conversation_score
+from utils.packet_event_utils import fix_event_process, same_conversation_score
 
 # TODO: Merge campaigns
 class CampaignManager:

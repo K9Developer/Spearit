@@ -17,5 +17,5 @@ def protocol_entry_from_id(id_: int) -> ProtocolInfoEntry:
     global protocol_data
     
     if len(protocol_data) == 0:
-        protocol_data = parse_protocol_entries_file(Path(r"constants\protocol_numbers.json"))
+        protocol_data = parse_protocol_entries_file(Path("constants", "protocol_numbers.json"))
     return protocol_data.get(id_, ProtocolInfoEntry("N/A", "N/A"))

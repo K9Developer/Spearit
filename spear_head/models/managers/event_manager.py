@@ -12,7 +12,7 @@ from models.managers.campaign_manager import CampaignManager
 from models.events.types.event import BaseEvent, EventKind, ViolationResponse
 from models.events.types.packet_event import PacketDeviceInfo, PacketDirection, PacketEvent, PacketPayload, ProcessInfo
 from models.events.types.event_type import EventType_
-from utils.parser import protocol_entry_from_id
+from utils.parser_utils import protocol_entry_from_id
 
 
 class EventManager:

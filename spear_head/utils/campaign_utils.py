@@ -2,7 +2,7 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from models.events.types.campaign import Campaign
 
-from utils.ai_manager import AIManager
+from utils.ai_utils import AIManager
 from models.logger import Logger
 
 SYSTEM_PROMPT = """You are an automated security campaign analysis engine.

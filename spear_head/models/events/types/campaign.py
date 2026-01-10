@@ -11,7 +11,7 @@ from models.events.types.event_type import EventType_
 from models.devices.device import Device
 from models.events.types.packet_event import PacketDirection, PacketEvent
 from models.logger import Logger
-from utils.campaign import generate_campaign_details
+from utils.campaign_utils import generate_campaign_details
 
 class CampaignStatus(Enum):
     ONGOING = "ONGOING"
