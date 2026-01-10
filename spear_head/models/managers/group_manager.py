@@ -165,11 +165,9 @@ class GroupManager:
             group_db = session.get(GroupDB, group_id)
             if group_db is None:
                 return False
-            device_dbs = session.query(DeviceDB).all()
+            device_dbs = session.query(DeviceDB).filter(~func.json_contains(DeviceDB.groups, f'[ {group_id} ]')).all()
             for device_db in device_dbs:
-                if device_db.device_id not in group_db.device_ids:
-                    group_db.device_ids.append(device_db.device_id)  # type: ignore
-                if group_id not in device_db.groups:
-                    device_db.groups.append(group_id)  # type: ignore
+                device_db.groups.append(group_id)
+                group_db.device_ids.append(device_db.device_id)  # type: ignore
             session.commit()
             return True
