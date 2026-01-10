@@ -1,4 +1,4 @@
-use crate::constants::{SOCKET_FIELD_LENGTH_SIZE, SOCKET_FULL_LENGTH_SIZE};
+use crate::constants::{GLOBAL_STATE, SOCKET_FIELD_LENGTH_SIZE, SOCKET_FULL_LENGTH_SIZE};
 use crate::log_error;
 use std::fmt::Debug;
 use std::io;
@@ -123,7 +123,7 @@ impl Fields {
 
     pub fn from_bytes(bytes: &[u8]) -> io::Result<Fields> {
         let mut index = 0;
-        let mut builder = FieldsBuilder::new();
+        let mut builder = FieldsBuilder::new(false);
         let max_len = bytes.len();
 
         while index < bytes.len() {
@@ -214,8 +214,20 @@ pub struct FieldsBuilder {
 }
 
 impl FieldsBuilder {
-    pub fn new() -> FieldsBuilder {
-        FieldsBuilder { fields: Vec::new() }
+    pub fn new(add_mac: bool) -> FieldsBuilder {
+        let mut fields: Vec<Field> = Vec::new();
+        if add_mac {
+            // TODO: Optimize by passing mac as param (?)
+            fields.push(Field::new_str(
+                GLOBAL_STATE
+                    .lock()
+                    .unwrap()
+                    .mac_address
+                    .clone()
+                    .unwrap_or("00:00:00:00:00:00".to_string()),
+            ));
+        }
+        FieldsBuilder { fields }
     }
 
     pub fn add_int(mut self, value: i64) -> Self {

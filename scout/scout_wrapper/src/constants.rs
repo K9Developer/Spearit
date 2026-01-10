@@ -16,6 +16,7 @@ pub struct ConsoleApp {
 pub struct ScoutWrapperState {
     pub terminal: ConsoleApp,
     pub is_running: bool,
+    pub mac_address: Option<String>,
 }
 
 impl ScoutWrapperState {
@@ -32,6 +33,7 @@ impl ScoutWrapperState {
                 debug: true,
             },
             is_running: true,
+            mac_address: None,
         }
     }
 }

@@ -160,7 +160,7 @@ impl Connection {
         if self.in_encrypt_mode {
             let enc = self.get_cipher_enc();
             let out = enc.encrypt_padded_vec_mut::<Pkcs7>(fields.to_bytes_no_length().as_slice());
-            let encrypted_fields = FieldsBuilder::new().add_raw(out).build();
+            let encrypted_fields = FieldsBuilder::new(false).add_raw(out).build();
 
             return self.send_raw(encrypted_fields.to_bytes().as_slice());
         }

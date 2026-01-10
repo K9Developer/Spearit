@@ -158,6 +158,48 @@ impl ScoutWrapper {
         }
     }
 
+    fn handle_heartbeat_sending(&mut self) {
+        if self.last_heartbeat_time.elapsed().as_secs() >= HEARTBEAT_INTERVAL {
+            self.current_heartbeat.generate_self();
+            let fields = FieldsBuilder::new(true)
+                .add_str(MessageIDs::HEARTBEAT.to_string())
+                .add_str(self.current_heartbeat.to_json())
+                .build();
+            match self.spearhead_conn.send_fields(fields) {
+                Ok(_) => {
+                    log_debug!("Sent heartbeat to Spearhead.");
+                    self.last_heartbeat_time = std::time::Instant::now();
+                }
+                Err(e) => {
+                    log_error!("Failed to send heartbeat to Spearhead. Error: {:?}", e);
+                }
+            }
+            self.current_heartbeat.reset();
+        }
+    }
+
+    fn handle_rule_update_request(&mut self) {
+        if self.last_rule_request_time.elapsed().as_secs() < RULE_REQUEST_INTERVAL {
+            return;
+        }
+        let fields = FieldsBuilder::new(true)
+            .add_str(MessageIDs::REQ_RULE_UPDATE.to_string())
+            .build();
+        match self.spearhead_conn.send_fields(fields) {
+            Ok(_) => {
+                log_debug!("Sent rule update request to Spearhead.");
+                self.last_rule_request_time = std::time::Instant::now();
+            }
+            Err(e) => {
+                log_error!(
+                    "Failed to send rule update request to Spearhead. Error: {:?}",
+                    e
+                );
+            }
+        }
+        self.last_rule_request_time = std::time::Instant::now();
+    }
+
     pub fn loader_handler_tick(&mut self) -> Result<(), String> {
         if self.state == ScoutWrapperState::Connected {
             if !self.spearhead_conn.is_connected() {
@@ -177,42 +219,9 @@ impl ScoutWrapper {
         }
 
         self.current_heartbeat.system_metrics.update();
-        if self.last_heartbeat_time.elapsed().as_secs() >= HEARTBEAT_INTERVAL {
-            self.current_heartbeat.generate_self();
-            let fields = FieldsBuilder::new()
-                .add_str(MessageIDs::HEARTBEAT.to_string())
-                .add_str(self.current_heartbeat.to_json())
-                .build();
-            match self.spearhead_conn.send_fields(fields) {
-                Ok(_) => {
-                    log_debug!("Sent heartbeat to Spearhead.");
-                    self.last_heartbeat_time = std::time::Instant::now();
-                }
-                Err(e) => {
-                    log_error!("Failed to send heartbeat to Spearhead. Error: {:?}", e);
-                }
-            }
-            self.current_heartbeat.reset();
-        }
 
-        if self.last_rule_request_time.elapsed().as_secs() >= RULE_REQUEST_INTERVAL {
-            let fields = FieldsBuilder::new()
-                .add_str(MessageIDs::REQ_RULE_UPDATE.to_string())
-                .build();
-            match self.spearhead_conn.send_fields(fields) {
-                Ok(_) => {
-                    log_debug!("Sent rule update request to Spearhead.");
-                    self.last_rule_request_time = std::time::Instant::now();
-                }
-                Err(e) => {
-                    log_error!(
-                        "Failed to send rule update request to Spearhead. Error: {:?}",
-                        e
-                    );
-                }
-            }
-            self.last_rule_request_time = std::time::Instant::now();
-        }
+        self.handle_heartbeat_sending();
+        self.handle_rule_update_request();
 
         // read from loader shared memory
         unsafe {
@@ -280,7 +289,7 @@ impl ScoutWrapper {
                     match report.type_ {
                         ReportType::ReportPacket => {
                             log_info!("Packet violation reported, sending to Spearhead...");
-                            let fields = FieldsBuilder::new()
+                            let fields = FieldsBuilder::new(false)
                                 .add_str(MessageIDs::REPORT.to_string())
                                 .add_str(report.to_json().to_string())
                                 .build();

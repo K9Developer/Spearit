@@ -41,7 +41,7 @@ impl MessageTrait for HandshakeMessage {
         // [Client -> Server] PUB
         let my_priv = EphemeralSecret::random_from_rng(OsRng);
         let my_pub = PublicKey::from(&my_priv);
-        let my_pub_fields = FieldsBuilder::new()
+        let my_pub_fields = FieldsBuilder::new(false)
             .add_raw(my_pub.as_bytes().to_vec())
             .build();
         conn.send_fields(my_pub_fields)?;
@@ -86,7 +86,7 @@ impl MessageTrait for HandshakeMessage {
             .unwrap()
             .as_secs(); // u64
         let bytes = now.to_be_bytes();
-        let fields = FieldsBuilder::new().add_raw(bytes.to_vec()).build();
+        let fields = FieldsBuilder::new(false).add_raw(bytes.to_vec()).build();
         conn.send_fields(fields)?;
 
         Ok(())

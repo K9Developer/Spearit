@@ -1,3 +1,4 @@
+use crate::constants::{GLOBAL_STATE, ScoutWrapperState};
 use crate::models::shared_types::network_info::NetworkInfo;
 use crate::{constants::SYSTEM_METRICS_INTERVAL, log_warn};
 use getifaddrs::{InterfaceFlags, getifaddrs};
@@ -107,6 +108,7 @@ impl Heartbeat {
             System::os_version().unwrap_or("Unknown Version".to_string())
         );
         let (ip_address, mac_address) = get_active_ip_and_mac();
+        GLOBAL_STATE.lock().unwrap().mac_address = mac_address.clone();
         Heartbeat {
             device_name,
             os_details,
@@ -128,6 +130,7 @@ impl Heartbeat {
         self.device_name = device_name;
         self.os_details = os_details;
         self.ip_address = ip_address.unwrap_or("0.0.0.0".to_string());
+        GLOBAL_STATE.lock().unwrap().mac_address = mac_address.clone();
         self.mac_address = mac_address.unwrap_or("00:00:00:00:00:00".to_string());
     }
 
