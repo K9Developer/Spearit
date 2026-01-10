@@ -1,5 +1,8 @@
 from __future__ import annotations
+
 from typing import TYPE_CHECKING, Generator
+
+from models.managers.callback_manager import CallbackEvent, CallbackManager
 if TYPE_CHECKING: from models.events.types.packet_event import PacketEvent  # type-only
 
 from models.devices.device import Device
@@ -25,7 +28,7 @@ class HeartbeatDeviceInformation:
         )
 
 class DeviceManager:
-    
+
     # TODO: This feels slow
     @staticmethod
     def _submit_device_info(device_info: HeartbeatDeviceInformation) -> int:
@@ -43,6 +46,7 @@ class DeviceManager:
                 session.add(new_device)
                 session.commit()
                 Logger.debug(f"Added new device (MAC: {device_info.mac_address}) - {new_device.device_name}")
+                CallbackManager.trigger_event(CallbackEvent.NEW_DEVICE, Device.from_db(new_device)) # type: ignore
                 return new_device.device_id  # type: ignore
             else:
                 existing_device.device_name = device_info.device_name or existing_device.device_name  # type: ignore

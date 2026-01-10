@@ -5,11 +5,14 @@ from constants.constants import SPEAR_HEAD_API_PORT, SPEAR_HEAD_WRAPPER_PORT, Me
 from models.connection.connection import Connection
 from models.connection.fields import Field, FieldType, Fields
 from models.connection.socket_server import SocketServer, SocketServerEvent
+from models.managers.callback_manager import CallbackEvent, CallbackManager
+from models.managers.device_manager import DeviceManager
 from models.managers.event_manager import EventManager
 from models.events.types.event import EventKind
+from models.managers.group_manager import GroupManager
 from models.managers.heartbeat_manager import HeartbeatManager
 from models.logger import Logger
-from models.rules.rule_manager import RuleManager
+from models.managers.rule_manager import RuleManager
 
 @dataclass
 class SpearHeadConfig:
@@ -29,12 +32,22 @@ class SpearHead:
         self.wrapper_server = SocketServer(self.config.wrapper_host, self.config.wrapper_port)
         self.wrapper_server.register_callback(SocketServerEvent.MESSAGE_RECEIVED, self._on_wrapper_message)
 
+        # setup All group
+        group = GroupManager.create_group("All", "System created group containing all devices")
+        GroupManager.add_all_devices_to_group(group.group_id) # type: ignore
+        CallbackManager.register_callback(CallbackEvent.NEW_DEVICE, lambda device: GroupManager.add_device_to_group(group.group_id, device.device_id)) # type: ignore
+
     def _on_wrapper_message(self, event: SocketServerEvent, conn: Connection, fields: Fields) -> None:
         if event != SocketServerEvent.MESSAGE_RECEIVED: return
         if len(fields.fields) == 0: return
         msg_id = fields.consume_field(FieldType.TEXT)
         if msg_id is None: return
         msg_id = msg_id.as_str()
+        device_mac = fields.consume_field(FieldType.TEXT)
+        if device_mac is None:
+            Logger.warn("Invalid field type in message (device_mac)")
+            return
+        device_mac = device_mac.as_str()
 
         if msg_id == MessageIDs.REPORT:
             json_event_raw = fields.consume_field(FieldType.TEXT)
@@ -67,7 +80,12 @@ class SpearHead:
                 Logger.warn("Failed to decode JSON heartbeat")
                 return
         elif msg_id == MessageIDs.REQUEST_RULES:
-            raw_rules = RuleManager.get_raw_rules_json()
+            device = DeviceManager.get_device_by_mac(device_mac)
+            if device is None:
+                Logger.warn(f"Received rules request for unknown device with MAC {device_mac}")
+                return
+            valid_rules = RuleManager.get_rules_matching_device(device)
+            raw_rules = json.dumps([rule.to_json() for rule in valid_rules])
             response_fields = Fields([
                 Field(FieldType.TEXT, MessageIDs.RULES_RESPONSE),
                 Field(FieldType.TEXT, raw_rules)
