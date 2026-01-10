@@ -1,5 +1,7 @@
 from datetime import datetime
-from typing import Any
+from typing import Any, Generator
+from databases.db_types.devices.heartbeat_db import HeartbeatDB
+from databases.engine import SessionMaker
 from models.logger import Logger
 
 from databases.db_types.devices.device import is_valid_mac
@@ -36,7 +38,7 @@ class HeartbeatManager:
         )
 
     @staticmethod
-    def submit_heartbeat(heartbeat_data: dict[Any, Any]) -> None:
+    def _submit_heartbeat(heartbeat_data: dict[Any, Any]) -> None:
         if "mac_address" not in heartbeat_data:
             Logger.warn("Heartbeat data missing 'mac_address' field; ignoring heartbeat.")
             return
@@ -47,5 +49,32 @@ class HeartbeatManager:
         
         hb = HeartbeatManager._parse_raw_heartbeat(heartbeat_data, datetime.now())
 
-        device_id = DeviceManager.submit_device_info(hb.device_info)
+        device_id = DeviceManager._submit_device_info(hb.device_info)
         hb.update_db(device_id)
+
+
+    # ------------------ Public Methods -----------------
+
+    @staticmethod
+    def get_all_heartbeats() -> Generator[Heartbeat, None, None]:
+        with SessionMaker() as session:
+            heartbeat_dbs = session.query(HeartbeatDB).all()
+            for heartbeat_db in heartbeat_dbs:
+                heartbeat = Heartbeat.from_db(heartbeat_db)
+                yield heartbeat
+    
+    @staticmethod
+    def get_heartbeat_by_id(heartbeat_id: int) -> Heartbeat | None:
+        with SessionMaker() as session:
+            heartbeat_db = session.query(HeartbeatDB).filter_by(heartbeat_id=heartbeat_id).first()
+            if heartbeat_db is None:
+                return None
+            return Heartbeat.from_db(heartbeat_db)
+        
+    @staticmethod
+    def get_heartbeats_for_device(device_id: int) -> Generator[Heartbeat, None, None]:
+        with SessionMaker() as session:
+            heartbeat_dbs = session.query(HeartbeatDB).filter_by(device_id=device_id).order_by(HeartbeatDB.timestamp.desc()).all()
+            for heartbeat_db in heartbeat_dbs:
+                heartbeat = Heartbeat.from_db(heartbeat_db)
+                yield heartbeat

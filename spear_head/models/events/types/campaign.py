@@ -82,6 +82,22 @@ class Campaign:
 
         if event_time < self.initial_event_time:
             self.initial_event_time = event_time
+        
+        event.campaign_id = self.campaign_id
+
+    @staticmethod
+    def from_db(campaign_db: CampaignDB) -> 'Campaign':
+        campaign = Campaign()
+        campaign.campaign_id = campaign_db.campaign_id # type: ignore
+        campaign.name = campaign_db.name # type: ignore
+        campaign.description = campaign_db.description # type: ignore
+        campaign.detailed_description = campaign_db.detailed_description # type: ignore
+        campaign.initial_event_time = campaign_db.start # type: ignore
+        campaign.last_updated = campaign_db.last_updated # type: ignore
+        campaign.status = CampaignStatus(campaign_db.status) # type: ignore
+        campaign.severity = CampaignSeverity(campaign_db.severity) # type: ignore
+        campaign.involved_device_ids = campaign_db.involved_devices or [] # type: ignore
+        return campaign
 
     def to_db(self):
         return CampaignDB(

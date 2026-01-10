@@ -142,6 +142,47 @@ class PacketEvent(BaseEvent):
             }
         }
 
+    # TODO: This func is hella sus, check if this works
+    @staticmethod
+    def from_db(event_db: EventDB) -> 'PacketEvent':
+        event_data = event_db.event_data # TODO: Check if this works
+
+        packet_event = PacketEvent(
+            timestamp_ns=int(event_db.timestamp.timestamp() * 1_000_000_000),
+            violated_rule_id=event_db.rule_id, # type: ignore
+            violation_type=ViolationType(event_data.get("violation_type", 0)), # type: ignore
+            violation_response=ViolationResponse.from_str(event_data.get("violation_response", "NONE")),
+            protocol=ProtocolInfoEntry(
+                libc_name=event_data["protocol_libc_name"],  # type: ignore
+                name=event_data["protocol_name"] # type: ignore
+            ),
+            is_connection_establishing=event_data["is_connection_establishing"], # type: ignore
+            direction=PacketDirection.from_str(event_data["direction"]), # type: ignore
+            process=ProcessInfo(
+                process_id=event_data["process"]["process_id"], # type: ignore
+                name=event_data["process"]["name"] # type: ignore
+            ),
+            source=PacketDeviceInfo(
+                ip=event_data["source"]["ip"], # type: ignore
+                port=event_data["source"]["port"], # type: ignore
+                mac=event_data["source"]["mac"] # type: ignore
+            ),
+            dest=PacketDeviceInfo(
+                ip=event_data["dest"]["ip"], # type: ignore
+                port=event_data["dest"]["port"], # type: ignore
+                mac=event_data["dest"]["mac"] # type: ignore
+            ),
+            payload=PacketPayload(
+                full_size=event_data["payload"]["full_size"], # type: ignore
+                data=bytearray(base64.b64decode(event_data["payload"]["data"])) # type: ignore
+            )
+        )
+
+        packet_event.event_id = event_db.event_id  # type: ignore
+        packet_event.campaign_id = event_db.campaign_id  # type: ignore
+
+        return packet_event
+
     def to_db(self) -> EventDB:
         """
         Convert this PacketEvent model instance to an EventDB instance.

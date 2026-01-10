@@ -14,6 +14,28 @@ class Heartbeat:
         self.heartbeat_id: int | None = None
         self.device_id: int | None = None
 
+    @staticmethod
+    def from_db(heartbeat_db: HeartbeatDB) -> "Heartbeat":
+        network_details = HeartbeatNetworkDetails(
+            contacted_macs=heartbeat_db.contacted_devices or {} # type: ignore
+        )
+
+        sys_metrics = heartbeat_db.system_metrics or {}
+        system_metrics = HeartbeatSystemMetrics(
+            cpu_usage=sys_metrics.get("cpu_usage", 0.0),
+            memory_usage=sys_metrics.get("memory_usage", 0.0)
+        )
+
+        hb = Heartbeat(
+            device_info=HeartbeatDeviceInformation.default(),  # Placeholder; device info not stored in heartbeat DB
+            network_details=network_details,
+            system_metrics=system_metrics,
+            timestamp=heartbeat_db.timestamp # type: ignore
+        )
+        hb.heartbeat_id = heartbeat_db.heartbeat_id # type: ignore
+        hb.device_id = heartbeat_db.device_id # type: ignore
+        return hb
+
     def to_db(self, device_id: int) -> HeartbeatDB:
         return HeartbeatDB(
             device_id=device_id,

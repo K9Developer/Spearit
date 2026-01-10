@@ -13,5 +13,6 @@ class DeviceDB(Base):
 
     handlers = Column(JSON, nullable=True) # list of user ids
     note = Column(String(250), nullable=True)
-    
-    # TODO: Group
+
+    groups = Column(JSON, nullable=True) # list of group ids
+    last_heartbeat_id = Column(Integer, nullable=True) # heartbeat id
