@@ -1,25 +1,7 @@
-import re
 from databases.db_types.devices.device_db import DeviceDB
 from databases.engine import SessionMaker
 from models.devices.device import Device
-
-_MAC_RE = re.compile(
-    r"""
-    ^
-    (?:[0-9A-Fa-f]{2}([-:]))            # aa: or aa-
-    (?:[0-9A-Fa-f]{2}\1){4}              # bb:cc:dd:ee:
-    [0-9A-Fa-f]{2}                       # ff
-    $
-    |
-    ^
-    (?:[0-9A-Fa-f]{4}\.){2}[0-9A-Fa-f]{4}  # aabb.ccdd.eeff
-    $
-    """,
-    re.VERBOSE,
-)
-
-def is_valid_mac(mac: str) -> bool:
-    return bool(_MAC_RE.match(mac))
+from utils.parser_utils import is_valid_mac
 
 def get_or_create_device_db(device: Device) -> tuple[bool, int]:
     """

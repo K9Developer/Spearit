@@ -8,15 +8,21 @@ class AIManager:
     initiated = False
 
     @staticmethod
-    def init() -> None:
+    def init() -> bool:
         Logger.info("Initializing AI Manager...")
-        ollama.pull(AI_MODEL)
-        AIManager.initiated = True
+        try:
+            ollama.pull(AI_MODEL)
+            AIManager.initiated = True
+        except Exception as e:
+            Logger.error(f"[AIManager] Failed to initialize AI model: {e}")
+            return False
     
     @staticmethod
     def get_json_response(system_prompt: str, user_prompt: str) -> dict[str, str] | None:
         if not AIManager.initiated:
-            AIManager.init()
+            succ = AIManager.init()
+            if not succ:
+                return None
 
         Logger.debug("[AIManager] Sending request to AI model...")
         response = ollama.chat( # type: ignore

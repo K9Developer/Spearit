@@ -8,6 +8,7 @@ from databases.db_types.devices.device import get_or_create_device_db
 from databases.db_types.events.event_db import EventDB
 from databases.engine import SessionMaker
 from models.events.types.event import BaseEvent, EventKind, ViolationResponse, ViolationType
+from utils.types import ProtocolInfoEntry
 
 class PacketDirection(Enum):
     INBOUND = "INBOUND"
@@ -34,11 +35,6 @@ class PacketDeviceInfo:
 class PacketPayload:
     full_size: int
     data: bytearray
-
-@dataclass
-class ProtocolInfoEntry:
-    libc_name: str
-    name: str
 
 @dataclass(init=False)
 class PacketEvent(BaseEvent):

@@ -1,4 +1,6 @@
-from models.events.types.packet_event import ProtocolInfoEntry
+from typing import TYPE_CHECKING
+if TYPE_CHECKING: 
+    from models.events.types.packet_event import ProtocolInfoEntry
 
 DEBUG = True
 
@@ -13,7 +15,7 @@ SPEAR_HEAD_WRAPPER_PORT = 12345
 SPEAR_HEAD_API_PORT = 12346
 ENABLE_ENCRYPTION = True
 
-protocol_data: dict[int, ProtocolInfoEntry] = dict()
+protocol_data: dict[int, 'ProtocolInfoEntry'] = dict()
 
 class MessageIDs:
     REPORT = "RPRT"

@@ -6,7 +6,6 @@ class UserDB(Base):
 
     user_id = Column(Integer, primary_key=True)
     full_name = Column(String(128), nullable=False)
-    # Explicit index for efficient lookups in get_user_by_email
     email = Column(String(256), nullable=False, unique=True, index=True)
     password_hash = Column(String(256), nullable=False)
 

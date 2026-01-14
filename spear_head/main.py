@@ -8,6 +8,8 @@ from databases.base import Base
 from spear_head import SpearHead
 from utils.ai_utils import AIManager
 
+from databases.db_types.users.user_db import UserDB
+
 def main():
 
     
@@ -19,7 +21,7 @@ def main():
     
     # TODO: Remove this
     rul = Rule(name="Test Rule", author_id=1)
-    rul.active_for_groups = []
+    rul.active_for_groups = [1]
     rul.conditions = [{"key": {"is_key": True,"value": "packet.dst_port"},"operator": "equals","value": {"is_key": False,"value": "6AM="}},{"key": {"is_key": True,"value": "packet.is_connection_establishing"},"operator": "equals","value": {"is_key": False,"value": "AA=="}}]
     rul.responses = ["alert"]
     rul.event_types = ["network.send_packet","network.receive_packet"]

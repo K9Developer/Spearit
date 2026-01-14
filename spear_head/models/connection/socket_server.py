@@ -65,7 +65,7 @@ class SocketServer:
                 return True
         return False
 
-    def accept_clients(self) -> None:
+    def accept_clients(self) -> None: # TODO: err handling
         def __accept_loop():
             while True:
                 client_socket, addr = self.socket_.accept()
