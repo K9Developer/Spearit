@@ -233,13 +233,17 @@ impl ScoutWrapper {
             let req_id = CommID::from_u32(res.request_id);
             match req_id {
                 Some(CommID::ReqActiveRuleIds) => {
-                    log_debug!("Received active rule IDs request from loader.");
                     let active_rule_ids: Vec<usize> = self
                         .rules
                         .iter()
                         .filter(|r| r.enabled())
                         .map(|r| r.id())
                         .collect();
+
+                    log_debug!(
+                        "Received active rule IDs ({}) request from loader.",
+                        active_rule_ids.len()
+                    );
                     self.loader_conn.write(
                         CommID::ResActiveRuleIds,
                         bytemuck::cast_slice(&active_rule_ids),

@@ -125,7 +125,6 @@ impl Connection {
                             if e.kind() == ErrorKind::WouldBlock
                                 || e.kind() == ErrorKind::TimedOut =>
                         {
-                            log_warn!("Socket would block or timed out");
                             return Err(());
                         }
                         Err(e) => return Err(()),
