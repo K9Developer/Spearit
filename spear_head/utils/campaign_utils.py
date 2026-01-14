@@ -87,7 +87,7 @@ Required JSON structure (exact keys only):
 }
 """
 
-def generate_campaign_details(campaign: Campaign) -> tuple[str, str, str, str]:
+def generate_campaign_details(campaign: 'Campaign') -> tuple[str, str, str, str]:
     """
     Generate a campaign name, description, and severity using a language model.
     Args:

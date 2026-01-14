@@ -1,8 +1,8 @@
 from datetime import datetime
 from databases.engine import SessionMaker
-from models.managers.device_manager import HeartbeatDeviceInformation
 from databases.db_types.devices.heartbeat_db import HeartbeatDB
 from models.heartbeats.heartbeat_types import HeartbeatNetworkDetails, HeartbeatSystemMetrics
+from utils.types import HeartbeatDeviceInformation
 
 class Heartbeat:
     def __init__(self, device_info: HeartbeatDeviceInformation, network_details: HeartbeatNetworkDetails, system_metrics: HeartbeatSystemMetrics, timestamp: datetime) -> None:

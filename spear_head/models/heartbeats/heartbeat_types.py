@@ -1,6 +1,3 @@
-from models.devices.device import Device
-from databases.db_types.devices.device import get_or_create_device_db
-
 class HeartbeatNetworkDetails:
     def __init__(self, contacted_macs: dict[str, int]) -> None:
         self.contacted_macs = contacted_macs
@@ -9,13 +6,13 @@ class HeartbeatNetworkDetails:
         """
         Convert MAC addresses to device IDs for contacted devices.
         """
+        from models.managers.device_manager import DeviceManager # avoid circular import
 
         cd = {}
         for mac, count in self.contacted_macs.items():
-            defd = Device.default()
-            defd.mac_address = mac
-            did = get_or_create_device_db(defd)[1]
-            cd[did] = count
+            device = DeviceManager.get_device_by_mac(mac)
+            if device is not None and device.device_id is not None:
+                cd[device.device_id] = count
             
         return cd
 

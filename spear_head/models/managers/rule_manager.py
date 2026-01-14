@@ -6,6 +6,7 @@ from models.managers.group_manager import GroupManager
 from models.rules.rule import Rule
 from typing import Any, Generator
 from models.devices.device import Device
+from sqlalchemy import or_, Integer, cast, exists, select
 
 class RuleManager:
 
@@ -242,18 +243,43 @@ class RuleManager:
             for rule_db in rule_dbs:
                 yield Rule.from_db(rule_db)
 
+
     @staticmethod
     def get_rules_matching_device(device: Device) -> Generator[Rule, None, None]:
-        if device.device_id is None: return 
+        if device.device_id is None:
+            return
+
         with SessionMaker() as session:
             groups = GroupManager.get_groups_for_device(device.device_id)
-            group_ids = [group.group_id for group in groups if group.group_id is not None]
-            rule_dbs = session.query(RuleDB).filter(
-                RuleDB.is_active == True,
-                func.or_(
-                    RuleDB.active_for_groups == None,
-                    func.json_overlaps(RuleDB.active_for_groups, group_ids)
-                )
-            ).all()
-            for rule_db in rule_dbs:
+            group_ids = [g.group_id for g in groups if g.group_id is not None]
+
+            q = session.query(RuleDB).filter(RuleDB.is_active == True)
+
+            if group_ids:
+                je = func.json_each(RuleDB.active_for_groups).table_valued("value").alias("je")
+                overlaps = exists(select(1).select_from(je).where(cast(je.c.value, Integer).in_(group_ids)))
+                q = q.filter(or_(RuleDB.active_for_groups.is_(None), overlaps))
+            else:
+                return
+
+            for rule_db in q.all():
                 yield Rule.from_db(rule_db)
+
+    
+    @staticmethod
+    def get_devices_affected_by_rule(rule_id: int) -> Generator[Device, None, None]:
+        rule = RuleManager.get_rule_by_id(rule_id)
+        if rule is None:
+            return
+        
+        devices: set[Device] = set()
+        for group_id in rule.active_for_groups:
+            curr_devices = GroupManager.get_devices_in_group(group_id)
+            for device in curr_devices:
+                exists = device in devices
+                if not exists:
+                    devices.add(device)
+                    yield device
+
+
+        

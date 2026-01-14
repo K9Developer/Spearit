@@ -1,10 +1,11 @@
 from __future__ import annotations
+from re import L
 from typing import TYPE_CHECKING
 
 from models.managers.heartbeat_manager import HeartbeatManager
 if TYPE_CHECKING: from models.heartbeats.heartbeat import Heartbeat  # type-only
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 from databases.db_types.devices.device_db import DeviceDB
 from databases.engine import SessionMaker
@@ -18,7 +19,7 @@ class Device:
     mac_address: str
     groups: list[int]
     last_heartbeat: Heartbeat | None
-    handlers: list[int] = []
+    handlers: list[int] = field(default_factory=list)
     note: str = ""
 
     device_id: int | None = None
@@ -63,6 +64,7 @@ class Device:
         Returns:
             DeviceDB: The corresponding DeviceDB instance.
         """
+
         return DeviceDB(
             device_name=self.device_name,
             operating_system_details=self.os_details,
@@ -70,6 +72,8 @@ class Device:
             mac_address=self.mac_address,
             handlers=self.handlers,
             note=self.note,
+            groups=self.groups,
+            last_heartbeat_id=self.last_heartbeat.heartbeat_id if self.last_heartbeat else None
         )
 
     def update_db(self):
@@ -96,3 +100,11 @@ class Device:
             groups=[],
             last_heartbeat=None
         )
+    
+    def __eq__(self, other: object) -> bool:
+        if not isinstance(other, Device): return False
+
+        if self.device_id is not None and other.device_id is not None:
+            return self.device_id == other.device_id
+    
+        return str(self.mac_address).lower() == str(other.mac_address).lower()

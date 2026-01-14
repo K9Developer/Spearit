@@ -1,4 +1,4 @@
-from sqlalchemy import func
+from sqlalchemy import Integer, cast, exists, func, select
 from databases.db_types.devices.device_db import DeviceDB
 from databases.engine import SessionMaker
 from typing import Generator
@@ -48,12 +48,19 @@ class GroupManager:
     def add_device_to_group(group_id: int, device_id: int) -> bool:
         with SessionMaker() as session:
             group_db = session.get(GroupDB, group_id)
-            if group_db is None: return False
-            if device_id in group_db.device_ids: return False
             device_db = session.get(DeviceDB, device_id)
-            if device_db is None: return False
+            if group_db is None or device_db is None:
+                return False
+
+            device_db.groups = device_db.groups or [] # type: ignore
+            group_db.device_ids = group_db.device_ids or [] # type: ignore
+
+            if group_id in device_db.groups or device_id in group_db.device_ids:
+                return False
+
             device_db.groups.append(group_id)
             group_db.device_ids.append(device_id)
+
             session.commit()
             return True
         
@@ -165,7 +172,11 @@ class GroupManager:
             group_db = session.get(GroupDB, group_id)
             if group_db is None:
                 return False
-            device_dbs = session.query(DeviceDB).filter(~func.json_contains(DeviceDB.groups, f'[ {group_id} ]')).all()
+
+            je = func.json_each(DeviceDB.groups).table_valued("value").alias("je")
+            contains_group = exists(select(1).select_from(je).where(cast(je.c.value, Integer) == group_id))
+            device_dbs = (session.query(DeviceDB).filter(~contains_group).all())
+
             for device_db in device_dbs:
                 device_db.groups.append(group_id)
                 group_db.device_ids.append(device_db.device_id)  # type: ignore

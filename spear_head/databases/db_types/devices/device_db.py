@@ -11,8 +11,8 @@ class DeviceDB(Base):
     last_known_ip_address = Column(String(38), nullable=True) # support ipv6 length (38)
     mac_address = Column(String(17), nullable=False, unique=True)
 
-    handlers = Column(JSON, nullable=True) # list of user ids
-    note = Column(String(250), nullable=True)
+    handlers = Column(JSON) # list of user ids
+    note = Column(String(250))
 
-    groups = Column(JSON, nullable=True) # list of group ids
+    groups = Column(JSON, nullable=False, default=[]) # list of group ids
     last_heartbeat_id = Column(Integer, nullable=True) # heartbeat id

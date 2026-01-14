@@ -92,3 +92,15 @@ class Rule:
             "description": self.description,
             "author_id": self.author
         }
+    
+    def to_compact_json(self) -> dict[str, Any]:
+        return {
+            "id": self.rule_id,
+            "order": self.rule_order,
+            "name": self.name,
+            "enabled": self.is_active,
+            "priority": self.priority,
+            "event_types": self.event_types,
+            "conditions": self.conditions,
+            "responses": self.responses,
+        }
