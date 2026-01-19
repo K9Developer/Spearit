@@ -5,5 +5,8 @@
   "reportUnknownArgumentType": "warning",
   "reportUnknownVariableType": "warning",
   "reportImplicitAny": "warning",
-  "reportPrivateUsage": "warning"
+  "reportPrivateUsage": "warning",
+  "reportMissingModuleDocstring": "none",
+  "reportMissingFunctionDocstring": "none",
+  "reportOpenWithoutEncoding": "none",
 }
