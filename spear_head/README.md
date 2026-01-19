@@ -5,5 +5,6 @@ TODO: Audit log
 TODO: Alert log and manager
 TODO: More other than packet event
 TODO: Move some types to utils.types
+TODO: campaign merging
 
 Note: handlers on rule are added on top of device and group handlers
