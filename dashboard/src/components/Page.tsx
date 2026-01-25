@@ -4,9 +4,10 @@ interface Props {
     title?: string;
     children: React.ReactNode;
     limitWidth?: boolean;
+    className?: string;
 }
 
-const Page = ({ title, children, limitWidth = false }: Props) => {
+const Page = ({ title, children, className, limitWidth = false }: Props) => {
     useEffect(() => {
         if (title) {
             document.title = title + " - Spearit Dashboard";
@@ -17,7 +18,7 @@ const Page = ({ title, children, limitWidth = false }: Props) => {
 
     return (
         <div className="w-full h-full flex justify-center">
-            <div className={`${limitWidth ? "max-w-[40vw] w-[40vw]" : "w-full"}`}>{children}</div>
+            <div className={`${limitWidth ? "max-w-[90vw] w-[90vw] lg:max-w-[50vw] lg:w-[50vw]" : "w-full"} ${className}`}>{children}</div>
         </div>
     );
 };

@@ -7,16 +7,17 @@ interface Props {
     icon?: React.ReactNode;
     onChange?: (value: string) => void;
     onIconClick?: () => void;
-    onFocus?: () => void;
-    onBlur?: () => void;
+    onFocus?: (e: any) => void;
+    onBlur?: (e: any) => void;
     className?: string;
+    errored?: boolean;
 }
 
-const Input = ({ title, placeholder, type, icon, onChange, onIconClick, onFocus, onBlur, className }: Props) => {
+const Input = ({ title, placeholder, type, icon, onChange, onIconClick, onFocus, onBlur, className, errored = false }: Props) => {
     return (
         <div className="flex flex-col gap-1 relative">
             {title && <label className="text-xs text-text-primary uppercase select-none">{title}</label>}
-            <div className={"flex flex-row items-center w-full border border-secondary bg-foreground rounded-md " + (className || "")}>
+            <div className={`transition-all flex flex-row items-center w-full outline outline-secondary bg-foreground rounded-md ${errored ? "outline-red-500!": ""} ${className}`}>
                 <input
                     className="w-full px-3 py-2 text-sm text-text-primary placeholder:text-text-gray outline-none"
                     placeholder={placeholder}

@@ -12,7 +12,16 @@
 @layer base {
     body {
         background-color: var(--color-background);
-        color: var(--color-text-primary);
         font-family: "Inter", sans-serif;
     }
+
+    *:not(a) {
+        color: var(--color-text-primary);
+    }
+
+    a:visited { color: rgb(68, 130, 201); }
+    
+    a:hover { color: rgb(68, 130, 201); }
+    
+    a:link { color: rgb(68, 130, 201); }
 }
