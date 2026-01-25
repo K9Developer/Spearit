@@ -22,7 +22,7 @@ const Page = ({ title, children, className, limitWidth = false, animated = false
             {animated && (
                 <MeshGradient className="absolute inset-0 w-screen h-screen" options={{ colors: ["#030712", "#080f21", "#08051a", "#040212"] }} />
             )}
-            <div className={`${limitWidth ? "max-w-[90vw] w-[90vw] lg:max-w-[50vw] lg:w-[50vw] z-10" : "w-full"} ${className}`}>{children}</div>
+            <div className={`${limitWidth ? "max-w-[90vw] w-[90vw] lg:max-w-[50vw] lg:w-[50vw]" : "w-full"} z-10 ${className}`}>{children}</div>
         </div>
     );
 };

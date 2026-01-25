@@ -7,6 +7,7 @@ import Button from "../components/Button";
 import { Link } from "react-router-dom";
 import ErrorHint from "@/components/ErrorHint";
 import { Info } from "lucide-react";
+import Logo from "@/components/Logo";
 
 const Login = () => {
     const [showPassword, setShowPassword] = useState(false);
@@ -39,9 +40,9 @@ const Login = () => {
     }, [email, password]);
 
     return (
-        <Page title="Login" limitWidth={true} className="p-12 flex justify-center" animated>
-            <Box.Primary className="flex flex-col items-center gap-5 w-[60vw] bg-background!">
-                <p className="text-xl font-bold tracking-widest">LOGIN</p>
+        <Page title="Login" limitWidth={false} className="flex flex-col items-center gap-14" animated>
+            <Box.Primary className="flex flex-col items-center gap-5 lg:w-[40vw] bg-background! mt-32 relative">
+                <p className="text-xl">LOGIN</p>
                 <div className="flex flex-col w-full gap-5">
                     <Input title="Email" placeholder="e.g. example@gmail.com" className="w-full" onChange={setEmail} errored={emailError} />
                     <Input
@@ -64,9 +65,9 @@ const Login = () => {
                         <p className="text-sm">
                             <Link to={"/forgot"}>Forgot your password?</Link>
                         </p>
-                        <Box.Secondary className="p-4! text-sm text-text-secondary flex items-center">
-                            <Info className="inline-block mr-2 w-4 h-4" stroke="var(--color-text-gray)" />
-                            If you don't have an account, please request one from an admin.
+                        <Box.Secondary className="p-4! text-sm text-text-secondary flex items-center gap-2">
+                            <Info className="w-4 h-4" />
+                            <p className="mt-1">If you don't have an account, please request one from an admin.</p>
                         </Box.Secondary>
                     </div>
                     <div>
@@ -74,6 +75,10 @@ const Login = () => {
                         {passwordError && <ErrorHint message="Please enter a valid password" />}
                     </div>
                     <Button title="Log in" highlight className="px-20 rounded-xl" disabled={emailError || passwordError || !email || !password} />
+                    <div className="h-px w-full bg-secondary my-8"></div>
+                    <div className="w-full flex justify-center">
+                        <Logo size={48} showText />
+                    </div>
                 </div>
             </Box.Primary>
         </Page>
