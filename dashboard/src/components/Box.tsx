@@ -12,10 +12,10 @@ const Box: BoxComp = (() => {
 }) as unknown as BoxComp;
 
 Box.Primary = ({ children, className }) => (
-    <div className={`shadow-xl rounded-xl p-5 bg-foreground lg:py-10 lg:px-18 h-fit ${className}`}>{children}</div>
+    <div className={`shadow-xl rounded-xl p-5 bg-background lg:py-10 lg:px-18 h-fit outline outline-secondary ${className}`}>{children}</div>
 );
 Box.Secondary = ({ children, className }) => (
-    <div className={`shadow-xl rounded-md p-5 bg-secondary lg:py-10 lg:px-18 h-fit ${className}`}>{children}</div>
+    <div className={`shadow-xl rounded-md p-5 bg-foreground lg:py-10 lg:px-18 h-fit outline outline-secondary ${className}`}>{children}</div>
 );
 
 export default Box;

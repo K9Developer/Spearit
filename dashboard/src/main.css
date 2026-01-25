@@ -1,8 +1,9 @@
+@import url("https://fonts.googleapis.com/css2?family=Ubuntu:ital,wght@0,300;0,400;0,500;0,700;1,300;1,400;1,500;1,700&display=swap");
 @import "tailwindcss";
 @theme {
     --color-background: #030712;
-    --color-foreground: #202636;
-    --color-secondary: #293040;
+    --color-foreground: #1a223b;
+    --color-secondary: #35405e;
     --color-highlight: #00bcff;
     --color-text-primary: #dde2ea;
     --color-text-secondary: #c5c9d1;
@@ -12,7 +13,7 @@
 @layer base {
     body {
         background-color: var(--color-background);
-        font-family: "Inter", sans-serif;
+        font-family: "Ubuntu", sans-serif;
     }
 
     *:not(a) {

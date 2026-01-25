@@ -19,7 +19,7 @@ const Input = ({ title, placeholder, type, icon, onChange, onIconClick, onFocus,
         <div className="flex flex-col gap-1 relative">
             {title && <label className="text-xs text-text-primary uppercase select-none">{title}</label>}
             <div
-                className={`transition-all flex flex-row items-center w-full outline outline-secondary bg-foreground rounded-md ${errored ? "outline-red-500!" : ""} ${className}`}
+                className={`transition-all flex flex-row items-center w-full outline outline-secondary rounded-md ${errored ? "outline-[#f5474f]!" : ""} ${className}`}
             >
                 <input
                     className="w-full px-3 py-2 text-sm text-text-primary placeholder:text-text-gray outline-none"

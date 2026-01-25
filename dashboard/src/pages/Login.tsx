@@ -39,8 +39,8 @@ const Login = () => {
     }, [email, password]);
 
     return (
-        <Page title="Login" limitWidth={true} className="p-12 flex justify-center">
-            <Box.Primary className="flex flex-col items-center gap-5 w-[60vw]">
+        <Page title="Login" limitWidth={true} className="p-12 flex justify-center" animated>
+            <Box.Primary className="flex flex-col items-center gap-5 w-[60vw] bg-background!">
                 <p className="text-xl font-bold tracking-widest">LOGIN</p>
                 <div className="flex flex-col w-full gap-5">
                     <Input title="Email" placeholder="e.g. example@gmail.com" className="w-full" onChange={setEmail} errored={emailError} />
@@ -51,9 +51,9 @@ const Login = () => {
                         className="w-full"
                         icon={
                             showPassword ? (
-                                <EyeClosed className="cursor-pointer" stroke="#7a869a" />
+                                <EyeClosed className="cursor-pointer" stroke="var(--color-text-gray)" />
                             ) : (
-                                <Eye className="cursor-pointer" stroke="#7a869a" />
+                                <Eye className="cursor-pointer" stroke="var(--color-text-gray)" />
                             )
                         }
                         onIconClick={() => setShowPassword(!showPassword)}
@@ -65,7 +65,7 @@ const Login = () => {
                             <Link to={"/forgot"}>Forgot your password?</Link>
                         </p>
                         <Box.Secondary className="p-4! text-sm text-text-secondary flex items-center">
-                            <Info className="inline-block mr-2 w-4 h-4" />
+                            <Info className="inline-block mr-2 w-4 h-4" stroke="var(--color-text-gray)" />
                             If you don't have an account, please request one from an admin.
                         </Box.Secondary>
                     </div>
