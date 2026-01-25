@@ -1,38 +1,79 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import Page from "../components/Page";
 import Box from "../components/Box";
 import Input from "../components/Input";
 import { Eye, EyeClosed } from "lucide-react";
 import Button from "../components/Button";
 import { Link } from "react-router-dom";
+import ErrorHint from "@/components/ErrorHint";
+import { Info } from "lucide-react";
 
 const Login = () => {
-    const [showPassword, setShowPassword] = React.useState(false);
+    const [showPassword, setShowPassword] = useState(false);
+
+    const [emailError, setEmailError] = useState(false);
+    const [passwordError, setPasswordError] = useState(false);
+    const [email, setEmail] = useState("");
+    const [password, setPassword] = useState("");
+
+    const handleMailChange = (email: string, onlyValid: boolean = false) => {
+        if (!email) return;
+        const emailReg = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+        const valid = emailReg.test(email);
+        if (onlyValid && !valid) return;
+        setEmailError(!valid);
+    };
+
+    const handlePasswordChange = (pass: string, onlyValid: boolean = false) => {
+        if (!pass) return;
+        const valid = pass.length >= 8;
+        if (onlyValid && !valid) return;
+        setPasswordError(!valid);
+    };
+
+    useEffect(() => {
+        if (!email) setEmailError(false);
+        if (!password) setPasswordError(false);
+        handleMailChange(email, false);
+        handlePasswordChange(password, false);
+    }, [email, password]);
 
     return (
         <Page title="Login" limitWidth={true} className="p-12 flex justify-center">
-            <Box.Primary className="flex flex-col items-center gap-5 w-[60vw] ">
+            <Box.Primary className="flex flex-col items-center gap-5 w-[60vw]">
                 <p className="text-xl font-bold tracking-widest">LOGIN</p>
                 <div className="flex flex-col w-full gap-5">
-                    <Input title="Email" placeholder="e.g. example@gmail.com" className="w-full" />
+                    <Input title="Email" placeholder="e.g. example@gmail.com" className="w-full" onChange={setEmail} errored={emailError} />
                     <Input
                         title="Password"
                         placeholder="Enter your password"
                         type={showPassword ? "text" : "password"}
                         className="w-full"
-                        icon={showPassword ? <EyeClosed className="cursor-pointer" /> : <Eye className="cursor-pointer" />}
+                        icon={
+                            showPassword ? (
+                                <EyeClosed className="cursor-pointer" stroke="#7a869a" />
+                            ) : (
+                                <Eye className="cursor-pointer" stroke="#7a869a" />
+                            )
+                        }
                         onIconClick={() => setShowPassword(!showPassword)}
+                        onChange={setPassword}
+                        errored={passwordError}
                     />
-                    <div className="flex flex-col gap-2">
-                        <p className="text-sm"><Link to={"/forgot"}>Forgot your password?</Link></p>
-                        <p className="text-sm">New to SpearIT? <Link to={"/signup"}>Sign Up</Link></p>
+                    <div className="flex flex-col gap-6">
+                        <p className="text-sm">
+                            <Link to={"/forgot"}>Forgot your password?</Link>
+                        </p>
+                        <Box.Secondary className="p-4! text-sm text-text-secondary flex items-center">
+                            <Info className="inline-block mr-2 w-4 h-4" />
+                            If you don't have an account, please request one from an admin.
+                        </Box.Secondary>
                     </div>
-
-                    <Button
-                        title="Log in"
-                        highlight
-                        className="px-20 rounded-xl"
-                    />
+                    <div>
+                        {emailError && <ErrorHint message="Please enter a valid email address" />}
+                        {passwordError && <ErrorHint message="Please enter a valid password" />}
+                    </div>
+                    <Button title="Log in" highlight className="px-20 rounded-xl" disabled={emailError || passwordError || !email || !password} />
                 </div>
             </Box.Primary>
         </Page>

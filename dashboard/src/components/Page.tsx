@@ -17,7 +17,7 @@ const Page = ({ title, children, className, limitWidth = false }: Props) => {
     }, [title]);
 
     return (
-        <div className="w-full h-full flex justify-center">
+        <div className="w-screen h-screen flex justify-center">
             <div className={`${limitWidth ? "max-w-[90vw] w-[90vw] lg:max-w-[50vw] lg:w-[50vw]" : "w-full"} ${className}`}>{children}</div>
         </div>
     );
