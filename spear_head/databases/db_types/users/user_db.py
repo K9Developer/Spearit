@@ -8,14 +8,18 @@ class UserDB(Base):
     full_name = Column(String(128), nullable=False)
     email = Column(String(256), nullable=False, unique=True, index=True)
     password_hash = Column(String(256), nullable=False)
+    salt = Column(String(64), nullable=False)
+
+    token = Column(String(512), nullable=True)
 
     """
     like so:
-    {
-        "permission_name": {
-            "groups": [list of group ids],
-            "devices": [list of device ids]
+    [
+        {
+            "type_": "CREATE_USERS",
+            "affected_groups": [1, 2, 3],
+            "affected_devices": [4, 5, 6],
         },
-    }
+    ]
     """
     permissions = Column(JSON, nullable=False, default={})

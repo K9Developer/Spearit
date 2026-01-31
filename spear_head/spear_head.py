@@ -7,13 +7,14 @@ from models.connection.fields import Field, FieldType, Fields
 from models.connection.socket_server import SocketServer, SocketServerEvent
 from models.managers.callback_manager import CallbackEvent, CallbackManager
 from models.managers.device_manager import DeviceManager
-from models.managers.event_manager import EventManager
 from models.events.types.event import EventKind
 from models.managers.group_manager import GroupManager
 from models.logger import Logger
 from models.managers.internal_event_manager import InternalEventManager
 from models.managers.internal_heartbeat_manager import InternalHeartbeatManager
 from models.managers.rule_manager import RuleManager
+from models.managers.user_manager import UserManager
+from models.users.permission import Permission
 
 @dataclass
 class SpearHeadConfig:
@@ -97,7 +98,40 @@ class SpearHead:
     def _tick(self) -> None:
         InternalEventManager._process_event()
 
+    def _start_power_user(self) -> None:
+        print("Power User Setup")
+        print("Create the initial power user account.\n")
+
+        while True:
+            email = input("Email: ").strip()
+            full_name = input("Full name: ").strip()
+            password = input("Password: ").strip()
+
+            print(f"\nCreating power user (password: {repr(password)}, email: {email}, name: {full_name})")
+
+            user = UserManager.create_user(
+                username=full_name,
+                email=email,
+                raw_password=password,
+                permissions=[Permission.root()],
+            )
+
+            if user is None:
+                print(
+                    "\nFailed to create the power user."
+                    "\n- Check that the email format is valid"
+                    "\n- Ensure name/password are valid"
+                    "\nPlease try again.\n"
+                )
+                continue
+
+            print(f"\nPower user created successfully: {full_name} <{email}>\n")
+            return
+
     def start(self) -> None:
+        self._start_power_user()
+        from models.connection import spear_head_http # to register HTTP routes
+        spear_head_http.run()
         self.wrapper_server.accept_clients()
         Logger.info(f"Spear Head Wrapper Server is running on {self.config.wrapper_host}:{self.config.wrapper_port}...")
         while True:
