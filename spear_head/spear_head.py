@@ -99,15 +99,21 @@ class SpearHead:
         InternalEventManager._process_event()
 
     def _start_power_user(self) -> None:
-        print("Power User Setup")
-        print("Create the initial power user account.\n")
+
+        # check if power user exists
+        for usr in UserManager.get_all_users():
+            for perm in usr.permissions:
+                if perm.type_ == Permission.root().type_:
+                    Logger.info("Power user already exists, skipping setup.")
+                    return
+
+        Logger.info("Power User Setup")
+        Logger.info("Create the initial power user account.\n")
 
         while True:
             email = input("Email: ").strip()
             full_name = input("Full name: ").strip()
             password = input("Password: ").strip()
-
-            print(f"\nCreating power user (password: {repr(password)}, email: {email}, name: {full_name})")
 
             user = UserManager.create_user(
                 username=full_name,
@@ -117,7 +123,7 @@ class SpearHead:
             )
 
             if user is None:
-                print(
+                Logger.error(
                     "\nFailed to create the power user."
                     "\n- Check that the email format is valid"
                     "\n- Ensure name/password are valid"
@@ -125,7 +131,7 @@ class SpearHead:
                 )
                 continue
 
-            print(f"\nPower user created successfully: {full_name} <{email}>\n")
+            Logger.info(f"\nPower user created successfully: {full_name} <{email}>\n")
             return
 
     def start(self) -> None:

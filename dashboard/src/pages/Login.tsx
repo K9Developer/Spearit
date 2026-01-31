@@ -8,6 +8,8 @@ import { Link } from "react-router-dom";
 import ErrorHint from "@/components/ErrorHint";
 import { Info } from "lucide-react";
 import Logo from "@/components/Logo";
+import { API_BASE_URL } from "@/constants";
+import toast from "react-hot-toast";
 
 const Login = () => {
     const [showPassword, setShowPassword] = useState(false);
@@ -39,8 +41,34 @@ const Login = () => {
         handlePasswordChange(password, false);
     }, [email, password]);
 
+    const onLogin = () => {
+        // TODO: APIManager, toasts
+        fetch(`${API_BASE_URL}/users/login`, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+                email,
+                password,
+            }),
+        })
+            .then((res) => {
+                if (!res.ok) {
+                    throw new Error("Network response was not ok");
+                }
+                return res.json();
+            })
+            .then(() => {
+                toast.success("Login successful!");
+            })
+            .catch(() => {
+                toast.error("Login failed. Please check your credentials.");
+            });
+    };
+
     return (
-        <Page title="Login" limitWidth={false} className="flex flex-col items-center gap-14" animated>
+        <Page title="Login" limitWidth={false} className="flex flex-col items-center gap-14 w-[93vw]! lg:w-full" animated>
             <Box.Primary className="flex flex-col items-center gap-5 lg:w-[40vw] bg-background! mt-32 relative">
                 <p className="text-xl">LOGIN</p>
                 <div className="flex flex-col w-full gap-5">
@@ -74,7 +102,13 @@ const Login = () => {
                         {emailError && <ErrorHint message="Please enter a valid email address" />}
                         {passwordError && <ErrorHint message="Please enter a valid password" />}
                     </div>
-                    <Button title="Log in" highlight className="px-20 rounded-xl" disabled={emailError || passwordError || !email || !password} />
+                    <Button
+                        title="Log in"
+                        highlight
+                        className="px-20 rounded-xl"
+                        disabled={emailError || passwordError || !email || !password}
+                        onClick={onLogin}
+                    />
                     <div className="h-px w-full bg-secondary my-8"></div>
                     <div className="w-full flex justify-center">
                         <Logo size={48} showText />

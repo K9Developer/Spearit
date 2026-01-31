@@ -88,7 +88,6 @@ class UserManager:
         if not validate_password(raw_password): return None
 
         hashed, salt = hash_raw_password(raw_password)
-        print(f"Generated salt: {salt} for user: {username}")
         user = User(
             username=username,
             email=email,
@@ -116,5 +115,4 @@ class UserManager:
         user = UserManager.get_user_by_id(user_id)
         if user is None:
             return False
-        print(f"Verifying password for user {user.full_name} with salt: {user.salt}")
         return hash_raw_password(raw_password, user.salt)[0] == user.password_hash
