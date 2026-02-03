@@ -1,7 +1,6 @@
 from constants.constants import AI_MODEL, AI_TEMPERATURE, AI_TOP_P, AI_CONTEXT_SIZE
 import ollama
 import json
-
 from models.logger import Logger
 
 class AIManager:
@@ -11,7 +10,7 @@ class AIManager:
     def init() -> bool:
         Logger.info("Initializing AI Manager...")
         try:
-            ollama.pull(AI_MODEL)
+            ollama.pull(AI_MODEL, stream=True)
             AIManager.initiated = True
         except Exception as e:
             Logger.error(f"[AIManager] Failed to initialize AI model: {e}")

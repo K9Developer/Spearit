@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import Page from "../components/Page";
 import Box from "../components/Box";
 import Input from "../components/Input";
-import { Eye, EyeClosed } from "lucide-react";
+import { Eye, EyeClosed, LayoutDashboardIcon } from "lucide-react";
 import Button from "../components/Button";
 import { Link } from "react-router-dom";
 import ErrorHint from "@/components/ErrorHint";
@@ -18,6 +18,8 @@ const Login = () => {
     const [passwordError, setPasswordError] = useState(false);
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
+
+    const [isLoading, setIsLoading] = useState(false);
 
     const handleMailChange = (email: string, onlyValid: boolean = false) => {
         if (!email) return;
@@ -42,29 +44,26 @@ const Login = () => {
     }, [email, password]);
 
     const onLogin = () => {
-        // TODO: APIManager, toasts
+        // TODO: APIManager
+        setIsLoading(true)
         fetch(`${API_BASE_URL}/users/login`, {
             method: "POST",
-            headers: {
-                "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-                email,
-                password,
-            }),
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ email, password }),
         })
-            .then((res) => {
-                if (!res.ok) {
-                    throw new Error("Network response was not ok");
-                }
-                return res.json();
-            })
-            .then(() => {
-                toast.success("Login successful!");
-            })
-            .catch(() => {
-                toast.error("Login failed. Please check your credentials.");
-            });
+        .then((res) => {
+            setIsLoading(false)
+            if (!res.ok) toast.error("We encountered an error while communicating with the server.")
+            return res.json();
+        })
+        .then((data) => {
+            if (data["status"] !== "ok") toast.error(data["message"] ?? "Unknown error occured.");
+            else toast.success("Logged in successfully!");
+        })
+        .catch(() => {
+            setIsLoading(false)
+            toast.error("Login failed. Please check your credentials.");
+        });
     };
 
     return (
@@ -105,6 +104,7 @@ const Login = () => {
                     <Button
                         title="Log in"
                         highlight
+                        loading={isLoading}
                         className="px-20 rounded-xl"
                         disabled={emailError || passwordError || !email || !password}
                         onClick={onLogin}

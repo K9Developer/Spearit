@@ -20,7 +20,9 @@ const Page = ({ title, children, className, limitWidth = false, animated = false
     return (
         <div className="w-screen h-screen flex justify-center relative">
             {animated && (
-                <MeshGradient className="absolute inset-0 w-screen h-screen" options={{ colors: ["#030712", "#080f21", "#08051a", "#040212"] }} />
+                <div className="absolute inset-0 w-screen h-screen blur-md">
+                    <MeshGradient className="w-full h-full" options={{ colors: ["#060d21", "#080f21", "#110c30", "#040212"] }} />
+                </div>
             )}
             <div className={`${limitWidth ? "max-w-[90vw] w-[90vw] lg:max-w-[50vw] lg:w-[50vw]" : "w-full"} z-10 ${className}`}>{children}</div>
         </div>
