@@ -34,7 +34,6 @@ def check_user_permission(session_token: str, action: UserAction, target: Action
     if user is None: return UserPermissionResponse.INVALID_SESSION
     if user.token != session_token: return UserPermissionResponse.INVALID_SESSION
 
-
     for perm in user.permissions:
         if perm.type_ == UserAction.ROOT: return UserPermissionResponse.ALLOWED
         if perm.type_ != action: continue

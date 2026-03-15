@@ -18,7 +18,7 @@ const Page = ({ title, children, className, limitWidth = false, animated = false
     }, [title]);
 
     return (
-        <div className="w-screen h-screen flex justify-center relative">
+        <div className="w-full min-w-0 h-screen flex justify-center relative">
             {animated && (
                 <MeshGradient className="absolute inset-0 w-screen h-screen" options={{ colors: ["#030712", "#080f21", "#08051a", "#040212"] }} />
             )}

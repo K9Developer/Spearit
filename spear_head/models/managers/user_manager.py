@@ -1,3 +1,4 @@
+from datetime import datetime, timezone
 from typing import Generator, TYPE_CHECKING
 
 from utils.user_utils import validate_password, validate_username, validate_email
@@ -6,7 +7,7 @@ if TYPE_CHECKING:
 from databases.db_types.users.user_db import UserDB
 from databases.engine import SessionMaker
 from models.users.user import User
-from utils.jwt_utils import make_user_token
+from utils.jwt_utils import decode_user_token, make_user_token
 from utils.password_utils import hash_raw_password
 
 
@@ -116,3 +117,23 @@ class UserManager:
         if user is None:
             return False
         return hash_raw_password(raw_password, user.salt)[0] == user.password_hash
+    
+    @staticmethod
+    def get_user_token(user_id: int) -> str | None:
+        user = UserManager.get_user_by_id(user_id)
+        if user is None or user.user_id is None:
+            return None
+        
+        if user.token is None:
+            user.token = make_user_token(user.user_id) # type: ignore
+            user.update_db()
+            return user.token
+        
+        token_info = decode_user_token(user.token)
+        if token_info is None or token_info.user_id != user_id or token_info.expiry < datetime.now(timezone.utc):
+            user.token = make_user_token(user.user_id) # type: ignore
+            user.update_db()
+            return user.token
+        
+        return user.token
+            

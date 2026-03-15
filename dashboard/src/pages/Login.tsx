@@ -4,14 +4,18 @@ import Box from "../components/Box";
 import Input from "../components/Input";
 import { Eye, EyeClosed } from "lucide-react";
 import Button from "../components/Button";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import ErrorHint from "@/components/ErrorHint";
 import { Info } from "lucide-react";
 import Logo from "@/components/Logo";
 import { API_BASE_URL } from "@/constants";
 import toast from "react-hot-toast";
+import APIManager from "@/utils/api_manager";
+import { useUser } from "@/context/User";
 
 const Login = () => {
+    const { login } = useUser();
+    const navigate = useNavigate();
     const [showPassword, setShowPassword] = useState(false);
 
     const [emailError, setEmailError] = useState(false);
@@ -41,34 +45,18 @@ const Login = () => {
         handlePasswordChange(password, false);
     }, [email, password]);
 
-    const onLogin = () => {
-        // TODO: APIManager, toasts
-        fetch(`${API_BASE_URL}/users/login`, {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-                email,
-                password,
-            }),
-        })
-            .then((res) => {
-                if (!res.ok) {
-                    throw new Error("Network response was not ok");
-                }
-                return res.json();
-            })
-            .then(() => {
-                toast.success("Login successful!");
-            })
-            .catch(() => {
-                toast.error("Login failed. Please check your credentials.");
-            });
+    const onLogin = async () => {
+        const res = await APIManager.loginWithCredentials(email, password, login);
+        if (res.success) {
+            toast.success("Login successful! Redirecting...");
+            setTimeout(() => {
+                navigate("/dashboard");
+            }, 300);
+        } else toast.error(res.message);
     };
 
     return (
-        <Page title="Login" limitWidth={false} className="flex flex-col items-center gap-14 w-[93vw]! lg:w-full" animated>
+        <Page title="Login" limitWidth={false} className="flex flex-col items-center gap-14 w-[73vw]! lg:w-full" animated>
             <Box.Primary className="flex flex-col items-center gap-5 lg:w-[40vw] bg-background! mt-32 relative">
                 <p className="text-xl">LOGIN</p>
                 <div className="flex flex-col w-full gap-5">

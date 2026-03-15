@@ -135,7 +135,7 @@ class SpearHead:
             return
 
     def start(self) -> None:
-        self._start_power_user()
+        # self._start_power_user() # TODO: Turn this on
         from models.connection import spear_head_http # to register HTTP routes
         spear_head_http.run()
         self.wrapper_server.accept_clients()
@@ -143,4 +143,6 @@ class SpearHead:
         while True:
             self._tick()
             time.sleep(0.1)
+            
+        Logger.warn("Spear Head main loop has exited unexpectedly")
 

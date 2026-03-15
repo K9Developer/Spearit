@@ -43,3 +43,27 @@ class NotificationManager:
 
         for notification_db in notification_dbs:
             yield Notification.from_db(notification_db)
+
+    @staticmethod
+    def create_notification(message: str, for_users: list[int]) -> Notification:
+        with SessionMaker() as session:
+            notification_db = NotificationDB(
+                message=message,
+                for_users=for_users,
+                read_by=[]
+            )
+            session.add(notification_db)
+            session.commit()
+            session.refresh(notification_db)
+            return Notification.from_db(notification_db)
+        
+    @staticmethod
+    def get_unread_notifications_for_user(user_id: int) -> Generator[Notification, None, None]:
+        with SessionMaker() as session:
+            notification_dbs = session.query(NotificationDB).filter(
+                NotificationDB.for_users.contains([user_id]),
+                ~NotificationDB.read_by.contains([user_id])
+            ).all()
+
+        for notification_db in notification_dbs:
+            yield Notification.from_db(notification_db)

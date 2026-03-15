@@ -3,6 +3,14 @@ import { Routes, Route } from "react-router-dom";
 import NotFound from "./pages/NotFound";
 import Login from "./pages/Login";
 import toast, { Toaster, useToasterStore } from "react-hot-toast";
+import APIManager from "./utils/api_manager";
+import { OrbitProgress } from "react-loading-indicators";
+import StartupNavigator from "./pages/StartupNavigator";
+import { useUser } from "./context/User";
+import Logo from "./components/Logo";
+import { BarChart3, Home, Settings, Users } from "lucide-react";
+import type { SidebarConfig } from "./components/Sidebar";
+import Sidebar from "./components/Sidebar";
 
 export function ToastLimiter({ max_toasts }: { max_toasts: number } = { max_toasts: 3 }) {
     const { toasts } = useToasterStore();
@@ -14,30 +22,52 @@ export function ToastLimiter({ max_toasts }: { max_toasts: number } = { max_toas
     return null;
 }
 
-export default function App() {
-    return (
-        <div>
-            <Toaster
-                toastOptions={{
-                    style: {
-                        background: "var(--color-secondary)",
-                        color: "#fff",
-                        border: "1px solid rgba(255,255,255,0.2)",
-                        borderRadius: "12px",
-                        padding: "12px 14px",
-                    },
-                }}
-            />
-            <ToastLimiter max_toasts={3} />
-            {/* <nav style={{ display: "flex", gap: 12, marginBottom: 16 }}>
-                <Link to="/">Home</Link>
-                <Link to="/about">About</Link>
-            </nav> */}
+const sidebarConfig: SidebarConfig = {
+    closable: true,
+    title: "SpearIT",
+    titleOpenIcon: <Logo showText={false} />,
+    titleCloseIcon: <Logo showText={false} />,
+    items: [
+        { title: "Home", icon: <Home size={18} />, onClick: () => {} },
+        { title: "Analytics", icon: <BarChart3 size={18} />, onClick: () => {} },
+        { title: "Users", icon: <Users size={18} />, onClick: () => {} },
+        {
+            title: "Settings",
+            icon: <Settings size={18} />,
+            onClick: () => {},
+            disabled: true,
+            disabledHint: "Settings are disabled in this sample",
+        },
+    ],
+};
 
-            <Routes>
-                <Route path="*" element={<NotFound />} />
-                <Route path="/login" element={<Login />} />
-            </Routes>
+export default function App() {
+    const { user, isLoggedIn, login, logout } = useUser();
+    console.log(isLoggedIn);
+    return (
+        <div className="flex h-screen overflow-hidden">
+            <Sidebar config={sidebarConfig} visible={isLoggedIn} mode="push" defaultOpen={false} />
+
+            <div className="flex-1 min-w-0 overflow-hidden">
+                <Toaster
+                    toastOptions={{
+                        style: {
+                            background: "var(--color-secondary)",
+                            color: "#fff",
+                            border: "1px solid rgba(255,255,255,0.2)",
+                            borderRadius: "12px",
+                            padding: "12px 14px",
+                        },
+                    }}
+                />
+                <ToastLimiter max_toasts={3} />
+
+                <Routes>
+                    <Route path="*" element={<NotFound />} />
+                    <Route path="/" element={<StartupNavigator />} />
+                    <Route path="/login" element={<Login />} />
+                </Routes>
+            </div>
         </div>
     );
 }
