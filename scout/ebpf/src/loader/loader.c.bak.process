@@ -1,0 +1,112 @@
+
+#define VERBOSE 1
+#define OBJECT_NETWORK_SCOUT_PATH "packet_scout.bpf.o"
+
+#define _GNU_SOURCE
+#include <signal.h>
+#include <bpf/libbpf.h>
+#include <ifaddrs.h>
+#include <netinet/in.h>
+#include "types.h"
+#include <net/if.h>
+#include <arpa/inet.h>
+#include <dirent.h>
+#include <stdlib.h>
+#include <string.h>
+#include <linux/if_ether.h>
+#include <errno.h>
+#include "tc_loader.h"
+#include "utils.h"
+#include "../scout/scout.h"
+#include "logger.h"
+
+static volatile sig_atomic_t exiting = 0;
+static void handle_sigint(int sig) { exiting = 1; }
+
+static void libbpf_print_fn(enum libbpf_print_level level, const char *format, va_list args)
+{
+    if (level == LIBBPF_DEBUG) return;
+    vfprintf(stderr, format, args);
+}
+
+int main(int argc, char **argv)
+{
+    set_debug_enabled(VERBOSE);
+    log_info("Starting Scout eBPF loader...");
+
+    libbpf_set_strict_mode(LIBBPF_STRICT_ALL);
+    libbpf_set_print(log_bpf);
+
+    log_debug("Setting up signal handlers...");
+    signal(SIGINT, handle_sigint);
+    signal(SIGTERM, handle_sigint);
+    signal(SIGKILL, handle_sigint);
+
+    // print cwd
+        char cwd[1024];
+        if (getcwd(cwd, sizeof(cwd)) != NULL) {
+            log_debug("Current working dir: %s", cwd);
+        } else {
+            log_debug("getcwd() error");
+        }
+
+    const char *obj_path = "build/process_scout.bpf.o";
+    struct bpf_object *obj = NULL;
+    struct bpf_program *prog;
+    struct bpf_link *links[16];
+    int link_cnt = 0;
+    int err;
+
+    libbpf_set_print(libbpf_print_fn);
+
+    obj = bpf_object__open_file(obj_path, NULL);
+    if (!obj) {
+        fprintf(stderr, "Failed to open BPF object: %s\n", obj_path);
+        return 1;
+    }
+
+    err = bpf_object__load(obj);
+    if (err) {
+        fprintf(stderr, "Failed to load BPF object: %d (%s)\n", err, strerror(-err));
+        bpf_object__close(obj);
+        return 1;
+    }
+
+    bpf_object__for_each_program(prog, obj) {
+        const char *sec = bpf_program__section_name(prog);
+
+        // Auto-attach only our tracepoints.
+        if (!sec || strncmp(sec, "tracepoint/", 11) != 0)
+            continue;
+
+        struct bpf_link *link = bpf_program__attach(prog);
+        if (!link) {
+            err = -errno;
+            fprintf(stderr, "Attach failed for %s: %d (%s)\n", sec, err, strerror(-err));
+            goto cleanup;
+        }
+
+        if (link_cnt < (int)(sizeof(links)/sizeof(links[0])))
+            links[link_cnt++] = link;
+
+        fprintf(stderr, "Attached: %s\n", sec);
+    }
+
+    fprintf(stderr, "Running. Read output via:\n");
+    fprintf(stderr, "  sudo cat /sys/kernel/debug/tracing/trace_pipe\n");
+
+    while (!exiting) {
+        sleep(1);
+    }
+
+cleanup:
+    for (int i = 0; i < link_cnt; i++)
+        bpf_link__destroy(links[i]);
+
+    bpf_object__close(obj);
+    return err ? 1 : 0;
+
+    return 0;
+}
+
+// TODO: Maybe add a hash to a violated packet so we can know when it was retried, since the retries are not from the same process

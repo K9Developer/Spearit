@@ -9,10 +9,15 @@ LOADER_SRCS = $(wildcard src/loader/**/*.c)
 SCOUT_SRCS = $(wildcard src/scout/*.c)
 EXTRA_SRCS = src/logger/logger.c
 
-all: loader_spearit packet_scout.bpf.o
+$(shell mkdir -p $(BUILD_DIR))
+
+all: loader_spearit packet_scout.bpf.o #process_scout.bpf.o
 
 packet_scout.bpf.o: src/bpfs/network/packet_scout.bpf.c
 	$(BPF_CLANG) $(BPF_FLAGS) -c $< -o $(BUILD_DIR)/$@
+
+#process_scout.bpf.o: src/bpfs/process/process_scout.bpf.c
+#	$(BPF_CLANG) $(BPF_FLAGS) -c $< -o $(BUILD_DIR)/$@
 
 loader_spearit: $(LOADER_SRCS) $(SCOUT_SRCS) $(EXTRA_SRCS)
 	cc -O2 -g src/loader/loader.c $(LOADER_SRCS) $(SCOUT_SRCS) $(EXTRA_SRCS) -o $(BUILD_DIR)/loader_spearit -lbpf -lelf -lz $(SHARED_FLAGS) $(LOADER_FLAGS)

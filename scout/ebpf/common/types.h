@@ -1,8 +1,6 @@
 #pragma once
 #include "constants.h"
 
-typedef __u64 __u128;
-
 typedef struct {
         unsigned long long full_size;
         unsigned long long sample_size;
