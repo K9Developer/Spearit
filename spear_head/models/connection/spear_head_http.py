@@ -29,7 +29,6 @@ class HTTPResponse():
     
     @staticmethod
     def error(response: Response, message: str) -> Dict[str, Any]:
-        response.status_code = 400
         return {"status": "error", "message": message}
 
     @staticmethod

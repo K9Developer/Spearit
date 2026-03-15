@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import Page from "../components/Page";
 import Box from "../components/Box";
 import Input from "../components/Input";
-import { Eye, EyeClosed } from "lucide-react";
+import { Eye, EyeClosed, LayoutDashboardIcon } from "lucide-react";
 import Button from "../components/Button";
 import { Link, useNavigate } from "react-router-dom";
 import ErrorHint from "@/components/ErrorHint";
@@ -22,6 +22,8 @@ const Login = () => {
     const [passwordError, setPasswordError] = useState(false);
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
+
+    const [isLoading, setIsLoading] = useState(false);
 
     const handleMailChange = (email: string, onlyValid: boolean = false) => {
         if (!email) return;
@@ -46,6 +48,7 @@ const Login = () => {
     }, [email, password]);
 
     const onLogin = async () => {
+        setIsLoading(true);
         const res = await APIManager.loginWithCredentials(email, password, login);
         if (res.success) {
             toast.success("Login successful! Redirecting...");
@@ -93,6 +96,7 @@ const Login = () => {
                     <Button
                         title="Log in"
                         highlight
+                        loading={isLoading}
                         className="px-20 rounded-xl"
                         disabled={emailError || passwordError || !email || !password}
                         onClick={onLogin}
