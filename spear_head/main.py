@@ -1,6 +1,12 @@
 
+import email
+
+from questionary import password
+
 from models.logger import Logger
+from models.managers.user_manager import UserManager
 from models.rules.rule import Rule
+from models.users.permission import Permission
 
 Logger.info("Starting SpearHead application...")
 from databases import engine
@@ -26,6 +32,15 @@ def main():
     rul.responses = ["alert"]
     rul.event_types = ["network.send_packet","network.receive_packet"]
     rul.update_db()
+
+    # TODO: Remove this
+    # temp super user
+    UserManager.create_user(
+            username="Admin User",
+            email="a@a.com",
+            raw_password="12345678",
+            permissions=[Permission.root()],
+        )
     
     AIManager.init()
     sh = SpearHead()

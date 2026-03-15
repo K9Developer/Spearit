@@ -95,6 +95,6 @@ class SocketServer:
                     self.__handle_callback(SocketServerEvent.CONNECTION_FAILED_TO_ESTABLISH, connection, Fields([]))
                     self.clients.remove(connection)
 
-        threading.Thread(target=__accept_loop, daemon=True).start()
+        threading.Thread(target=__accept_loop).start()
                 
         

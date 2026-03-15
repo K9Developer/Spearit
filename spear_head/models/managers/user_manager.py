@@ -1,7 +1,13 @@
-from typing import Generator
+from datetime import datetime, timezone
+from typing import Generator, TYPE_CHECKING
+
+from utils.user_utils import validate_password, validate_username, validate_email
+if TYPE_CHECKING:
+    from utils.permission_utils import Permission
 from databases.db_types.users.user_db import UserDB
 from databases.engine import SessionMaker
 from models.users.user import User
+from utils.jwt_utils import decode_user_token, make_user_token
 from utils.password_utils import hash_raw_password
 
 
@@ -73,20 +79,61 @@ class UserManager:
             return True
         
     @staticmethod
-    def create_user(username: str, email: str, raw_password: str) -> User | None:
+    def create_user(username: str, email: str, raw_password: str, permissions: list['Permission']) -> User | None:
         if UserManager.get_user_by_email(email) is not None:
             return None
         
+        #TODO: return specific error messages
+        if not validate_email(email): return None
+        if not validate_username(username): return None
+        if not validate_password(raw_password): return None
+
+        hashed, salt = hash_raw_password(raw_password)
         user = User(
             username=username,
             email=email,
-            password_hash=hash_raw_password(raw_password),
+            password_hash=hashed,
+            permissions=permissions,
         )
-        
+        user.salt = salt
+
         with SessionMaker() as session:
             user_db = user.to_db()
             session.add(user_db)
             session.commit()
             user.user_id = user_db.user_id  # type: ignore
 
+        if user.user_id:
+            user.token = make_user_token(user.user_id)
+            user.update_db()
+        else:
+            return None
+
         return user
+    
+    @staticmethod
+    def verify_user_password(user_id: int, raw_password: str) -> bool:
+        user = UserManager.get_user_by_id(user_id)
+        if user is None:
+            return False
+        return hash_raw_password(raw_password, user.salt)[0] == user.password_hash
+    
+    @staticmethod
+    def get_user_token(user_id: int) -> str | None:
+        user = UserManager.get_user_by_id(user_id)
+        if user is None or user.user_id is None:
+            return None
+        
+        if user.token is None:
+            user.token = make_user_token(user.user_id) # type: ignore
+            user.update_db()
+            return user.token
+        
+        token_info = decode_user_token(user.token)
+        if token_info is None or token_info.user_id != user_id or token_info.expiry < datetime.now(timezone.utc):
+            user.token = make_user_token(user.user_id) # type: ignore
+            user.update_db()
+            return user.token
+        
+        return user.token
+            

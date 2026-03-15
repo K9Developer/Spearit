@@ -1,0 +1,32 @@
+import React, { useEffect } from "react";
+import { MeshGradient } from "@mesh-gradient/react";
+interface Props {
+    title?: string;
+    children: React.ReactNode;
+    limitWidth?: boolean;
+    className?: string;
+    animated?: boolean;
+}
+
+const Page = ({ title, children, className, limitWidth = false, animated = false }: Props) => {
+    useEffect(() => {
+        if (title) {
+            document.title = title + " - Spearit Dashboard";
+        } else {
+            document.title = "Spearit Dashboard";
+        }
+    }, [title]);
+
+    return (
+        <div className="w-full min-w-0 h-screen flex justify-center relative">
+            {animated && (
+                <div className="absolute inset-0 w-screen h-screen blur-md">
+                    <MeshGradient className="w-full h-full" options={{ colors: ["#060d21", "#080f21", "#110c30", "#040212"] }} />
+                </div>
+            )}
+            <div className={`${limitWidth ? "max-w-[90vw] w-[90vw] lg:max-w-[50vw] lg:w-[50vw]" : "w-full"} z-10 ${className}`}>{children}</div>
+        </div>
+    );
+};
+
+export default Page;
