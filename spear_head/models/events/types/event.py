@@ -8,8 +8,8 @@ from models.devices.device import Device
 from models.managers.device_manager import DeviceManager
 
 class ViolationType(Enum):
-    PACKET = 0
-    CONNECTION = 1
+    PACKET = "packet"
+    CONNECTION = "connection"
 
 class EventKind(Enum):
     PACKET = 0
@@ -135,3 +135,23 @@ class BaseEvent:
         event.device = device
 
         return event
+    
+    def to_json(self) -> dict:
+        return {
+            "event_id": self.event_id,
+            "timestamp_ns": self.timestamp_ns,
+            "violated_rule_id": self.violated_rule_id,
+            "violation_type": self.violation_type.value,
+            "violation_response": self.violation_response.value,
+            "event_type": self.event_type.name,
+            "device": {
+                "device_id": self.device.device_id,
+                "device_name": self.device.device_name,
+                "operating_system_details": self.device.os_details,
+                "last_known_ip_address": self.device.ip_address,
+                "mac_address": self.device.mac_address,
+                "groups": self.device.groups,
+                "last_heartbeat_id": self.device.last_heartbeat.heartbeat_id if self.device.last_heartbeat else None
+            },
+            "campaign_id": self.campaign_id
+        }

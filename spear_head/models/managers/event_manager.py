@@ -130,3 +130,18 @@ class EventManager:
                 })
                 current_start = current_end
             return intervals    
+        
+    @staticmethod
+    def get_events_date_range(start_time: datetime, end_time: datetime) -> Generator[EventType_, None, None]:
+        with SessionMaker() as session:
+            event_dbs = session.query(EventDB).filter(
+                EventDB.timestamp >= start_time,
+                EventDB.timestamp <= end_time
+            ).order_by(EventDB.timestamp).all()
+            for event_db in event_dbs:
+                if event_db.event_type == EventKind.to_str(EventKind.PACKET): # type: ignore
+                    event = PacketEvent.from_db(event_db)
+                else:
+                    event = BaseEvent.from_db(event_db)
+                
+                yield event

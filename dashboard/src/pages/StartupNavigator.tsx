@@ -1,6 +1,6 @@
-import { useUser } from "@/context/User";
+import { useUser } from "@/context/useUser";
 import APIManager from "@/utils/api_manager";
-import React, { useEffect } from "react";
+import { useEffect } from "react";
 import { OrbitProgress } from "react-loading-indicators";
 import { useNavigate } from "react-router-dom";
 
@@ -24,7 +24,7 @@ const StartupNavigator = () => {
             }
         };
         checkToken();
-    }, []);
+    }, [login, navigate]);
 
     return (
         <div className="inset-0 absolute flex justify-center items-center">

@@ -93,7 +93,8 @@ class SocketServer:
                     Logger.warn(f"Connection failed to establish with {addr[0]}:{addr[1]}")
                     connection.kill()
                     self.__handle_callback(SocketServerEvent.CONNECTION_FAILED_TO_ESTABLISH, connection, Fields([]))
-                    self.clients.remove(connection)
+                    if connection in self.clients:
+                        self.clients.remove(connection)
 
         threading.Thread(target=__accept_loop).start()
                 

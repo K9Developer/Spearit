@@ -31,7 +31,9 @@ const Button = ({ title, hint, disabledHint, highlight, disabled, loading, icon,
                 disabled={disabled}
                 onPointerEnter={() => setIsHovered(true)}
                 onPointerLeave={() => setIsHovered(false)}
-                onClick={onClick}
+                onClick={() => {
+                    if (!disabled && onClick) onClick();
+                }}
             >
                 {icon && !loading && icon}
                 {loading && <PuffLoader size={23} />}

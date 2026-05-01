@@ -90,6 +90,19 @@ class Device:
                 session.merge(device_db)
                 session.commit()
 
+    def to_json(self):
+        return {
+            "device_id": self.device_id,
+            "device_name": self.device_name,
+            "operating_system_details": self.os_details,
+            "last_known_ip_address": self.ip_address,
+            "mac_address": self.mac_address,
+            "groups": self.groups,
+            "last_heartbeat_id": self.last_heartbeat.heartbeat_id if self.last_heartbeat else None,
+            "handlers": self.handlers,
+            "note": self.note,
+        }
+
     @staticmethod
     def default() -> "Device":
         return Device(

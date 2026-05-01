@@ -69,7 +69,7 @@ class UserManager:
             return User.from_db(user_db)
         
     @staticmethod
-    def set_user_permissions(user_id: int, permissions: dict[str, dict[str, list[int]]]) -> bool:
+    def set_user_permissions(user_id: int, permissions: list[dict[str, str | list[int]]]) -> bool:
         with SessionMaker() as session:
             user_db = session.get(UserDB, user_id)
             if user_db is None:
@@ -136,4 +136,15 @@ class UserManager:
             return user.token
         
         return user.token
-            
+
+    @staticmethod    
+    def set_user_password(user_id: int, new_raw_password: str) -> bool:
+        if not validate_password(new_raw_password): return False
+        user = UserManager.get_user_by_id(user_id)
+        if user is None:
+            return False
+        hashed, salt = hash_raw_password(new_raw_password)
+        user.password_hash = hashed
+        user.salt = salt
+        user.update_db()
+        return True

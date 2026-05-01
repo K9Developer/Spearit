@@ -126,8 +126,29 @@ class GroupManager:
         
     @staticmethod
     def get_groups_handled_by_user(user_id: int) -> Generator[Group, None, None]:
+        from models.managers.user_manager import UserManager
+
+        user = UserManager.get_user_by_id(user_id)
+        if user is None: return
+        if user.is_superuser():
+            yield from GroupManager.get_all_groups()
+            return
+
         with SessionMaker() as session:
-            group_dbs = session.query(GroupDB).filter(func.json_contains(GroupDB.handlers, f'[ {user_id} ]')).all()
+            handlers_each = func.json_each(GroupDB.handlers).table_valued("value").alias("handlers_each")
+
+            group_dbs = (
+                session.query(GroupDB)
+                .filter(
+                    exists(
+                        select(1)
+                        .select_from(handlers_each)
+                        .where(cast(handlers_each.c.value, Integer) == user_id)
+                    )
+                )
+                .all()
+            )
+
             for group_db in group_dbs:
                 yield Group.from_db(group_db)
 

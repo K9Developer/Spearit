@@ -67,5 +67,12 @@ class User:
                 session.commit()
 
         self.user_id = user_id  # type: ignore
+
+    def is_superuser(self) -> bool:
+        from models.users.permission import UserAction
+        for perm in self.permissions:
+            if perm.type_ == UserAction.ROOT:
+                return True
+        return False
     
     

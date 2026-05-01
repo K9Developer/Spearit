@@ -133,7 +133,7 @@ def build_permissions(group_ids: list[int], device_ids: list[int], index: int) -
     device_slice = device_ids[index % max(1, len(device_ids))::3] or device_ids[:2]
     return [
         Permission(
-            type_=UserAction.CREATE_USER,
+            type_=UserAction.CONTROL_USERS,
             affected_groups=group_slice,
             affected_devices=device_slice,
         ),

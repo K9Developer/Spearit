@@ -165,6 +165,15 @@ class DeviceManager:
     
     @staticmethod
     def get_devices_by_handler(user_id: int) -> Generator[Device, None, None]:
+        from models.managers.user_manager import UserManager
+
+        user = UserManager.get_user_by_id(user_id)
+        if user is None: return
+        is_superuser = user.is_superuser()
+        if is_superuser:
+            yield from DeviceManager.get_all_devices()
+            return
+
         with SessionMaker() as session:
             device_dbs = session.query(DeviceDB).filter(DeviceDB.handlers.contains([user_id])).all() # type: ignore
             for device_db in device_dbs:
