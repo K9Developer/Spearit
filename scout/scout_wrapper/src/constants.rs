@@ -110,8 +110,10 @@ pub const RULE_REQUEST_INTERVAL: u64 = 10; // seconds
 
 pub const MAX_PROCESS_NAME_LENGTH: usize = 16;
 pub const MAX_NETWORK_RECORDS: usize = 32;
-pub const MAX_NETWORK_RECORD_NAME_LENGTH: usize = if MAX_PROCESS_NAME_LENGTH > 17 {
+pub const MAX_NETWORK_RECORD_NAME_LENGTH: usize = if MAX_PROCESS_NAME_LENGTH > 18 {
     MAX_PROCESS_NAME_LENGTH
 } else {
-    17
+    18
 };
+
+pub const SERVER_IP: &str = "10.100.102.168:12345";

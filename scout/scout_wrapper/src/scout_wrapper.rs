@@ -1,8 +1,8 @@
 use std::path::{Path, PathBuf};
 use std::slice;
 
-use crate::constants::HEARTBEAT_INTERVAL;
 use crate::constants::MessageIDs;
+use crate::constants::HEARTBEAT_INTERVAL;
 use crate::models::connection::fields::FieldsBuilder;
 use crate::models::connection::message_trait::MessageTrait;
 use crate::models::connection::messages::handshake::HandshakeMessage;
@@ -73,7 +73,8 @@ impl ScoutWrapper {
         });
 
         let mut time = std::time::Instant::now();
-        time -= std::time::Duration::from_secs(HEARTBEAT_INTERVAL);
+        time -=
+            std::time::Duration::from_secs(HEARTBEAT_INTERVAL) + std::time::Duration::from_secs(10); // so that we send the first heartbeat immediately
         ScoutWrapper {
             spear_head_conn: Connection::new(),
             state: ScoutWrapperState::NotConnected,
@@ -215,6 +216,8 @@ impl ScoutWrapper {
         }
 
         if self.state != ScoutWrapperState::Connected {
+            self.last_heartbeat_time -= std::time::Duration::from_secs(HEARTBEAT_INTERVAL)
+                + std::time::Duration::from_secs(10);
             return Ok(());
         }
 
@@ -293,7 +296,7 @@ impl ScoutWrapper {
                     match report.type_ {
                         ReportType::ReportPacket => {
                             log_info!("Packet violation reported, sending to Spearhead...");
-                            let fields = FieldsBuilder::new(false)
+                            let fields = FieldsBuilder::new(true)
                                 .add_str(MessageIDs::REPORT.to_string())
                                 .add_str(report.to_json().to_string())
                                 .build();
@@ -329,6 +332,9 @@ impl ScoutWrapper {
                     self.current_heartbeat
                         .network_details
                         .merge_network_info(&net_info);
+                    log_debug!(
+                        "Received network info update from loader, merged into current heartbeat."
+                    );
                 }
                 _ => {
                     log_warn!("Received unknown request ID from loader: {:?}", req_id);
@@ -359,6 +365,7 @@ impl ScoutWrapper {
                 }
                 self.rules = new_rules;
                 self.print_rules();
+                
             }
             _ => {
                 log_warn!(

@@ -259,7 +259,7 @@ static __noinline void __update_contact_counts(NetworkContacts *contacts, unsign
     if (!contacts || !name) return;
     if (name_length == 0) return;
 
-    if (name_length > MAX_NETWORK_RECORD_NAME_LENGTH) name_length = MAX_NETWORK_RECORD_NAME_LENGTH;
+    if (name_length >= MAX_NETWORK_RECORD_NAME_LENGTH) name_length = MAX_NETWORK_RECORD_NAME_LENGTH - 1; // ensure space for null terminator
 
     unsigned char padded_name[MAX_NETWORK_RECORD_NAME_LENGTH];
 
@@ -273,6 +273,7 @@ static __noinline void __update_contact_counts(NetworkContacts *contacts, unsign
             break;
         padded_name[i] = name[i];
     }
+    padded_name[name_length] = 0; // null terminator
 
     // search for existing contact
     #pragma clang loop unroll(disable)
@@ -284,7 +285,6 @@ static __noinline void __update_contact_counts(NetworkContacts *contacts, unsign
         #pragma clang loop unroll(disable)
         for (int j = 0; j < MAX_NETWORK_RECORD_NAME_LENGTH; j++) {
             if (j >= name_length) break;
-            bpf_printk("Comparing contact name byte %d: %c vs %c", j, contacts->names[i][j], padded_name[j]);
             if (contacts->names[i][j] != padded_name[j]) {
                 equal = false;
                 break;

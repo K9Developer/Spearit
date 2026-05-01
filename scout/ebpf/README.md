@@ -10,3 +10,5 @@
 1. See logs: `sudo cat /sys/kernel/debug/tracing/trace_pipe`
 2. Build `make`
 3. Run `sudo build/loader`
+
+sudo tc qdisc del dev wlo1 clsact

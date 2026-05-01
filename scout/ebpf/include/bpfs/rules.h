@@ -166,15 +166,19 @@ __noinline bool has_packet_condition_resolved(PacketViolationInfo *pv_info, Cond
 }
 
 // return violated rule id && violated rule order
-static __u128 evaluate_packet_rules(void* rules_array_map, PacketViolationInfo *pv_info, bool *has_violation) { 
+static __u128 evaluate_packet_rules(void* rules_array_map, PacketViolationInfo *pv_info, bool *has_violation) {
+    bpf_printk("Evaluating packet against rules...");
     if (!has_violation) return 0;
     *has_violation = false;
+    bpf_printk("Checking rules array map");
     if (!rules_array_map || !pv_info) return 0;
 
     #pragma clang loop unroll(disable)
     for (int rule_ind = 0; rule_ind < MAX_RULES; rule_ind++) {
         CompiledRule *rule = (CompiledRule *)bpf_map_lookup_elem(rules_array_map, &rule_ind);
+        bpf_printk("Checking rule availability, is_rule_null: %d, conditions_length: %d, id: %d", rule == NULL, rule ? rule->conditions.length : 0, rule ? rule->id : 0);
         if (!rule || rule->conditions.length == 0 || rule->id == 0) continue;
+        bpf_printk("Checking rule index %d", rule_ind);
 
         EventType* events = rule->event_types;
         bool rule_violated = true;
@@ -191,6 +195,7 @@ static __u128 evaluate_packet_rules(void* rules_array_map, PacketViolationInfo *
             }
         }
         if (!found_one_match) continue;
+        bpf_printk("Packet matches event types of rule %d, checking conditions...", rule_ind);
 
         #pragma clang loop unroll(disable)
         for (int cond_ind = 0; cond_ind < MAX_CONDITIONS; cond_ind++) {

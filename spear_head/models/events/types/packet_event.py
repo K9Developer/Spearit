@@ -154,7 +154,6 @@ class PacketEvent(BaseEvent):
             violation_type=ViolationType(event_data.get("violation_type", 0)), # type: ignore
             violation_response=ViolationResponse.from_str(event_data.get("violation_response", "NONE")),
             protocol=ProtocolInfoEntry(
-                libc_name=event_data["protocol_libc_name"],  # type: ignore
                 name=event_data["protocol_name"] # type: ignore
             ),
             is_connection_establishing=event_data["is_connection_establishing"], # type: ignore

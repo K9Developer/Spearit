@@ -1,5 +1,5 @@
-use getifaddrs::{InterfaceFlags, getifaddrs};
-use scout_wrapper::constants::GLOBAL_STATE;
+use getifaddrs::{getifaddrs, InterfaceFlags};
+use scout_wrapper::constants::{GLOBAL_STATE, SERVER_IP};
 use scout_wrapper::models::connection::connection::Connection;
 use scout_wrapper::models::connection::message_trait::MessageTrait;
 use scout_wrapper::models::connection::messages::handshake::HandshakeMessage;
@@ -12,7 +12,7 @@ use std::net::IpAddr;
 
 fn main() {
     set_debug_enabled(true);
-    let mut scout_wrapper = ScoutWrapper::new("10.100.102.169:12345");
+    let mut scout_wrapper = ScoutWrapper::new(SERVER_IP);
 
     scout_wrapper.launch_ebpf(&std::path::PathBuf::from(
         "/home/k9dev/Coding/Products/Spearit/scout/ebpf/build/loader_spearit",

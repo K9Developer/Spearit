@@ -174,7 +174,6 @@ int handle_packet(struct __sk_buff *skb, __u8 direction) {
     update_network_info(&current_network_info, &pv_info);
     size_t now = bpf_ktime_get_ns() / 1000000000; // seconds
     if (now - last_network_info_update >= HEARTBEAT_NETWORK_INFO_INTERVAL) {
-        bpf_printk("Updating network info map");
         __u32 key = 0;
         NetworkInfo *ev = bpf_ringbuf_reserve(&network_info, sizeof(*ev), 0);
         if (ev) {
@@ -185,8 +184,22 @@ int handle_packet(struct __sk_buff *skb, __u8 direction) {
         }
     } 
 
+    // print packet info simply
+    if (pv_info.is_ip) {
+        __u32 s = bpf_ntohl(pv_info.ip.ipv4.src_ip);
+        __u32 d = bpf_ntohl(pv_info.ip.ipv4.dst_ip);
+        // if (s != 1000 && d != 1000) return 0; // filter out to reduce noise during testing
+        if (pv_info.ip.src_port != 1000) return 0; // filter out to reduce noise during testing
+        bpf_printk("IPv4 %u.%u.%u.%u:%u -> %u.%u.%u.%u:%u, is connection establishing: %d", (s >> 24) & 0xff, (s >> 16) & 0xff, (s >> 8) & 0xff, s & 0xff, pv_info.ip.src_port, (d >> 24) & 0xff, (d >> 16) & 0xff, (d >> 8) & 0xff, d & 0xff, pv_info.ip.dst_port, pv_info.is_connection_establishing);
+
+    } else {
+        return 0; // for now only care about IP packets, filter out the rest to reduce noise during testing
+    }
+    
+
     bool has_violation = false;
     __u128 violated_rule_info = evaluate_packet_rules(&rules, &pv_info, &has_violation);
+    bpf_printk("Evaluated packet against rules, violation: %d", has_violation);
     if (has_violation) {
         pv_info.violated_rule_id = (__u64)(violated_rule_info >> 64);
         __u64 violated_rule_order = (__u64)(violated_rule_info & 0xFFFFFFFFFFFFFFFF);

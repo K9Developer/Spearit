@@ -8,7 +8,7 @@
 #define WRAPPER_SHM_KEY 0xDEADBEEFC0DEFACE
 #define LOADER_SHM_KEY 0xCAFEBABEFACEFEED
 
-#define SYNC_INTERVAL_MS 5 * 60 * 1000 // 5 minutes
+#define SYNC_INTERVAL_MS 1 * 60 * 1000 // 5 minutes
 #define HEARTBEAT_NETWORK_INFO_INTERVAL 10 //60 * 10 // seconds
 
 // Rules
@@ -36,7 +36,7 @@
 #define MAX_NETWORK_RECORDS 32
 
 #define MAX_PROCESS_NAME_LENGTH 16
-#define MAX_NETWORK_RECORD_NAME_LENGTH MAX(MAX_PROCESS_NAME_LENGTH, 17) // 17 is mac address string length
+#define MAX_NETWORK_RECORD_NAME_LENGTH MAX(MAX_PROCESS_NAME_LENGTH, 18) // 18 is mac address string length + null terminator
 
 #ifndef AF_INET
 #define AF_INET 2

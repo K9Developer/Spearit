@@ -51,10 +51,6 @@ int handle_packet_violation(void *ctx, void *data, size_t size)
 int handle_network_info(void *ctx, void *data, size_t size)
 {
     NetworkInfo *ni = data;
-    log_info("Received Network Info Update (%d entries):", ni->mac_contacts.current_size);
-    for (unsigned int i = 0; i < ni->mac_contacts.current_size; i++) {
-        log_info("  MAC Contact: %s, Count: %d", ni->mac_contacts.names[i], ni->mac_contacts.counts[i]);
-    }
     send_network_info(*ni);
     return 0;
 }

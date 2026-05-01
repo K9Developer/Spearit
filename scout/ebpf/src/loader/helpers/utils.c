@@ -106,6 +106,7 @@ void sync_rules(int packet_rules_map_fd)
     CompiledRule* rules = get_rules();
     log_debug("Fetched latest rules from wrapper.");
 
+    int rule_count = 0;
     for (int ri = 0; ri < MAX_RULES; ri++) {
 
         // decide the map fd to give the rule to
@@ -125,9 +126,10 @@ void sync_rules(int packet_rules_map_fd)
             int upd_err = bpf_map_update_elem(map_fd, &ri, &rules[ri], BPF_ANY);
             if (upd_err) log_error("Failed to update rule ID %llu at index %d in BPF map: %s", rules[ri].id, ri, strerror(-upd_err));
             else log_debug("Updated rule ID %llu at index %d in BPF map (%s)", rules[ri].id, ri, type == RULE_TYPE_PACKET ? "Packet" : type == RULE_TYPE_FILE ? "File" : type == RULE_TYPE_PROCESS ? "Process" : "Unknown");
+            rule_count++;
         }
     }
 
-    log_info("Rule synchronization complete.");
+    log_info("Rule synchronization complete. Updated %d rules.", rule_count);
     
 }
