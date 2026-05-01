@@ -1,9 +1,15 @@
+from __future__ import annotations
+from typing import TYPE_CHECKING
+if TYPE_CHECKING:
+    from models.users.user import User
+
 from datetime import datetime, timezone
 from enum import Enum
 
 from typing import Any
 
 from models.users.permission import ActionTarget, ActionTargetType, Permission, UserAction
+
 from utils.jwt_utils import decode_user_token
 
 def from_json_permissions(json_perms: list[Any]) -> list[Permission]:
@@ -24,15 +30,21 @@ class UserPermissionResponse(Enum):
     DENIED = 1
     INVALID_SESSION = 2
 
-def check_user_permission(session_token: str, action: UserAction, target: ActionTarget) -> UserPermissionResponse:
+
+def verify_token_validity(token: str) -> tuple["User | None", bool]:
     from models.managers.user_manager import UserManager
-    user_tok_data = decode_user_token(session_token)
-    if user_tok_data is None: return UserPermissionResponse.INVALID_SESSION
-    if user_tok_data.expiry < datetime.now(timezone.utc): return UserPermissionResponse.INVALID_SESSION
-    user_id = user_tok_data.user_id
-    user = UserManager.get_user_by_id(user_id)
-    if user is None: return UserPermissionResponse.INVALID_SESSION
-    if user.token != session_token: return UserPermissionResponse.INVALID_SESSION
+    user_info = decode_user_token(token)
+    if user_info is None: return None, False
+    if user_info.expiry < datetime.now(timezone.utc): return None, False
+    user = UserManager.get_user_by_id(user_info.user_id)
+    if user is None: return None, False
+    if user.token != token: return None, False
+    return user, True
+
+def check_user_permission(session_token: str, action: UserAction, target: ActionTarget) -> UserPermissionResponse:
+    user, valid = verify_token_validity(session_token)
+    if not valid or user is None:
+        return UserPermissionResponse.INVALID_SESSION
 
     for perm in user.permissions:
         if perm.type_ == UserAction.ROOT: return UserPermissionResponse.ALLOWED

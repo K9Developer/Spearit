@@ -115,6 +115,11 @@ class PacketEvent(BaseEvent):
     
     def to_json(self) -> dict[str, Any]:
         return {
+            "event_id": self.event_id,
+            "timestamp_ns": self.timestamp_ns,
+            "violated_rule_id": self.violated_rule_id,
+            "violation_type": self.violation_type.name,
+            "violation_response": self.violation_response.name,
             "protocol": self.protocol.name,
             "is_connection_establishing": self.is_connection_establishing,
             "direction": self.direction.value,

@@ -34,7 +34,7 @@ const Button = ({ title, hint, disabledHint, highlight, disabled, loading, icon,
                 onClick={onClick}
             >
                 {icon && !loading && icon}
-                {loading && <PuffLoader size={23}/> }
+                {loading && <PuffLoader size={23} />}
                 {title}
             </button>
         </div>

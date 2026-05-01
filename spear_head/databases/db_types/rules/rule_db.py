@@ -15,6 +15,7 @@ class RuleDB(Base):
     author_id = Column(Integer, ForeignKey("users.user_id"))
     rule_name = Column(String(64), nullable=False)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
+    last_updated = Column(DateTime(timezone=True), onupdate=func.now())
     priority = Column(Integer, nullable=False, default=0)
     
     handlers = Column(JSON) # list of user ids

@@ -2,7 +2,7 @@ import datetime
 from typing import Generator
 from databases.engine import SessionMaker
 from databases.db_types.notifications.notification_db import NotificationDB
-from models.notifications.notification import Notification
+from models.notifications.notification import Notification, NotificationType
 from datetime import datetime
 
 class NotificationManager:
@@ -45,12 +45,20 @@ class NotificationManager:
             yield Notification.from_db(notification_db)
 
     @staticmethod
-    def create_notification(message: str, for_users: list[int]) -> Notification:
+    def create_notification(
+        message: str,
+        for_users: list[int],
+        type_: NotificationType = NotificationType.INFO,
+        link: str | None = None,
+    ) -> Notification:
         with SessionMaker() as session:
             notification_db = NotificationDB(
                 message=message,
                 for_users=for_users,
-                read_by=[]
+                type=type_.value,
+                created_at=datetime.now(),
+                read_by=[],
+                link=link,
             )
             session.add(notification_db)
             session.commit()

@@ -11,6 +11,7 @@ import Logo from "./components/Logo";
 import { BarChart3, Home, Settings, Users } from "lucide-react";
 import type { SidebarConfig } from "./components/Sidebar";
 import Sidebar from "./components/Sidebar";
+import Overview from "./pages/Overview";
 
 export function ToastLimiter({ max_toasts }: { max_toasts: number } = { max_toasts: 3 }) {
     const { toasts } = useToasterStore();
@@ -66,6 +67,8 @@ export default function App() {
                     <Route path="*" element={<NotFound />} />
                     <Route path="/" element={<StartupNavigator />} />
                     <Route path="/login" element={<Login />} />
+
+                    <Route path="/dashboard" element={<Overview />} />
                 </Routes>
             </div>
         </div>

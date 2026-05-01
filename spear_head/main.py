@@ -1,12 +1,16 @@
 
 import email
+import random
 
 from questionary import password
 
 from models.logger import Logger
+from models.managers.device_manager import DeviceManager
 from models.managers.user_manager import UserManager
 from models.rules.rule import Rule
 from models.users.permission import Permission
+from utils.dummy_data_generator import SeedConfig, seed_database
+from utils.dummy_data_generator import seed_database
 
 Logger.info("Starting SpearHead application...")
 from databases import engine
@@ -17,7 +21,7 @@ from utils.ai_utils import AIManager
 from databases.db_types.users.user_db import UserDB
 
 def main():
-
+    #TODO: ROOT SHOULD SEE AND HANDLE ALL GORUPS/DEVICES
     
 
     # TODO: use alembic when database structure is stable
@@ -32,6 +36,20 @@ def main():
     rul.responses = ["alert"]
     rul.event_types = ["network.send_packet","network.receive_packet"]
     rul.update_db()
+    
+    # TODO: Remove this
+    seed_database(
+        SeedConfig(
+            seed=random.randint(0, 1000000),
+            groups=3,
+            devices=20,
+            users=4,
+            campaigns=3,
+            heartbeats_per_device=30,
+            events_per_device=10,
+            reset=True
+        )
+    )
 
     # TODO: Remove this
     # temp super user
@@ -41,7 +59,7 @@ def main():
             raw_password="12345678",
             permissions=[Permission.root()],
         )
-    
+
     AIManager.init()
     sh = SpearHead()
     sh.start()

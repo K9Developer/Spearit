@@ -1,3 +1,4 @@
+import datetime
 from typing import Generator
 from databases.db_types.devices.heartbeat_db import HeartbeatDB
 from databases.engine import SessionMaker
@@ -30,3 +31,11 @@ class HeartbeatManager:
             for heartbeat_db in heartbeat_dbs:
                 heartbeat = Heartbeat.from_db(heartbeat_db)
                 yield heartbeat
+
+    @staticmethod
+    def get_last_heartbeat_time() -> datetime.datetime | None:
+        with SessionMaker() as session:
+            last_heartbeat_db = session.query(HeartbeatDB).order_by(HeartbeatDB.timestamp.desc()).first()
+            if last_heartbeat_db is None:
+                return None
+            return last_heartbeat_db.timestamp # type: ignore

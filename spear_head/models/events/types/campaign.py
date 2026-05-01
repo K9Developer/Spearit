@@ -2,6 +2,7 @@
 from dataclasses import dataclass
 from datetime import datetime
 from enum import Enum
+from typing import Any
 
 from databases.db_types.campaigns.campaign_db import CampaignDB
 from databases.db_types.devices.device import get_or_create_device_db
@@ -179,4 +180,18 @@ class Campaign:
             repr(event) for event in self.events
         ]}
         )"""
+    
+    def to_json(self) -> dict[str, Any]:
+        return {
+            "campaign_id": self.campaign_id,
+            "name": self.name,
+            "description": self.description,
+            "detailed_description": self.detailed_description,
+            "status": self.status.value,
+            "severity": self.severity.value,
+            "initial_event_time": self.initial_event_time.isoformat(),
+            "last_updated": self.last_updated.isoformat(),
+            "involved_device_ids": self.involved_device_ids,
+            "events": [event.to_json() for event in self.events]
+        }
     

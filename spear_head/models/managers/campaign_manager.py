@@ -9,7 +9,9 @@ from models.events.types.event import EventKind
 from models.events.types.campaign import Campaign, CampaignSeverity
 from models.events.types.event_type import EventType_
 from constants.constants import CAMPAIGN_MATCH_SCORE_THRESHOLD, CAMPAIGN_ONGOING_TIMEOUT
+from models.managers.device_manager import DeviceManager
 from models.managers.event_manager import EventManager
+from models.managers.group_manager import GroupManager
 from utils.packet_event_utils import fix_event_process, same_conversation_score
 
 # TODO: Merge campaigns
@@ -168,4 +170,16 @@ class CampaignManager:
         event.update_db()
         campaign.update_db()
         return True
-        
+    
+    @staticmethod
+    def get_all_campaigns_for_user(user_id: int) -> Generator[Campaign, None, None]:
+        for campaign in CampaignManager.get_all_campaigns():
+            for event in campaign.events:
+                if event.device and user_id in event.device.handlers: # type: ignore
+                    yield campaign
+                    break
+
+                for group in GroupManager.get_groups_handled_by_user(user_id):
+                    if event.device and group.group_id in event.device.groups: # type: ignore
+                        yield campaign
+                        break

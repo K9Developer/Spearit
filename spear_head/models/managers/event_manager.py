@@ -1,4 +1,5 @@
 # pyright: reportArgumentType=false
+from datetime import datetime, timedelta
 from typing import Any, Generator
 
 from sqlalchemy import func
@@ -111,4 +112,21 @@ class EventManager:
             count = session.query(func.count(EventDB.event_id)).scalar()
             return count if count is not None else 0
             
-    
+    @staticmethod
+    def get_event_counts_in_intervals(start_time: datetime, end_time: datetime, interval_minutes: int) -> list[dict[str, Any]]:
+        with SessionMaker() as session:
+            intervals = []
+            current_start = start_time
+            while current_start < end_time:
+                current_end = current_start + timedelta(minutes=interval_minutes)
+                count = session.query(func.count(EventDB.event_id)).filter(
+                    EventDB.timestamp >= current_start,
+                    EventDB.timestamp < current_end
+                ).scalar()
+                intervals.append({ # type: ignore
+                    "start": current_start.isoformat(),
+                    "end": current_end.isoformat(),
+                    "count": count if count is not None else 0
+                })
+                current_start = current_end
+            return intervals    

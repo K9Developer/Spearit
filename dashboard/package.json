@@ -19,6 +19,7 @@
     "react-hot-toast": "^2.6.0",
     "react-loading-indicators": "^1.0.1",
     "react-router-dom": "^7.13.0",
+    "react-spinners": "^0.17.0",
     "tailwindcss": "^4.1.18"
   },
   "devDependencies": {

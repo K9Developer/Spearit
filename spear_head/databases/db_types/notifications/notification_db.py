@@ -11,4 +11,4 @@ class NotificationDB(Base):
     type = Column(String(50), nullable=False)  # "info", "warning", "danger"
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     read_by = Column(JSON, nullable=False)  # list of user ids who have read the notification
-    # TODO: relative link when clicking on notification
+    link = Column(String(200), nullable=True)  # optional link for more details or action

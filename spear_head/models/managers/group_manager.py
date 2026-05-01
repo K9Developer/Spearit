@@ -137,6 +137,7 @@ class GroupManager:
             group_db = session.get(GroupDB, group_id)
             if group_db is None:
                 return False
+            group_db.handlers = list(group_db.handlers or []) # type: ignore
             if user_id in group_db.handlers:
                 return False
             group_db.handlers.append(user_id)
@@ -149,6 +150,7 @@ class GroupManager:
             group_db = session.get(GroupDB, group_id)
             if group_db is None:
                 return False
+            device_db.handlers = list(device_db.handlers or []) # type: ignore
             if user_id not in group_db.handlers:
                 return False
             group_db.handlers.remove(user_id)

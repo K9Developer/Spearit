@@ -10,12 +10,13 @@ from models.logger import Logger
 from databases.engine import SessionMaker
 from databases.db_types.devices.device_db import DeviceDB
 from utils.types import HeartbeatDeviceInformation
+from databases.db_types.groups.group_db import GroupDB
 
 class DeviceManager:
 
     # TODO: This feels slow
     @staticmethod
-    def _submit_device_info(device_info: HeartbeatDeviceInformation) -> int:
+    def submit_device_info(device_info: HeartbeatDeviceInformation) -> int:
         with SessionMaker() as session:
             existing_device = session.query(DeviceDB).filter_by(mac_address=device_info.mac_address).first()
             if existing_device is None:
@@ -44,12 +45,12 @@ class DeviceManager:
         hdi1 = HeartbeatDeviceInformation.default()
         hdi1.mac_address = event.source.mac
         hdi1.ip_address = event.source.ip or "0.0.0.0"
-        DeviceManager._submit_device_info(hdi1)
+        DeviceManager.submit_device_info(hdi1)
 
         hdi2 = HeartbeatDeviceInformation.default()
         hdi2.mac_address = event.dest.mac
         hdi2.ip_address = event.dest.ip or "0.0.0.0"
-        DeviceManager._submit_device_info(hdi2)
+        DeviceManager.submit_device_info(hdi2)
 
     @staticmethod
     def _create_device(mac_address: str) -> Device:
@@ -144,6 +145,7 @@ class DeviceManager:
             device_db = session.query(DeviceDB).filter_by(device_id=device_id).first()
             if device_db is None:
                 return False
+            device_db.handlers = list(device_db.handlers or []) # type: ignore
             if user_id in device_db.handlers: # type: ignore
                 device_db.handlers.remove(user_id) # type: ignore
                 session.commit()
@@ -156,6 +158,7 @@ class DeviceManager:
             if device_db is None:
                 return False
             if user_id not in device_db.handlers: # type: ignore
+                device_db.handlers = list(device_db.handlers or []) # type: ignore
                 device_db.handlers.append(user_id) # type: ignore
                 session.commit()
             return True
@@ -167,3 +170,11 @@ class DeviceManager:
             for device_db in device_dbs:
                 device = Device.from_db(device_db)
                 yield device
+        
+        with SessionMaker() as session:
+            group_dbs = session.query(GroupDB).filter(GroupDB.handlers.contains(user_id)).all() # type: ignore
+            for group_db in group_dbs:
+                for device_id in group_db.device_ids: # type: ignore
+                    device_db = session.query(DeviceDB).filter_by(device_id=device_id).first()
+                    if device_db is not None:
+                        yield Device.from_db(device_db)

@@ -24,15 +24,29 @@ class SpearHeadConfig:
 
 DEFAULT_CONFIG = SpearHeadConfig()
 
+@dataclass
+class SpearHeadData:
+    wrappers_connected: int
+
+PUBLIC_SPEAR_HEAD_DATA = SpearHeadData(wrappers_connected=0)
+
 class SpearHead:
 
     wrapper_server: SocketServer
     config: SpearHeadConfig
 
+    def _on_device_connected(self):
+        PUBLIC_SPEAR_HEAD_DATA.wrappers_connected += 1
+    
+    def _on_device_disconnected(self):
+        PUBLIC_SPEAR_HEAD_DATA.wrappers_connected = max(0, PUBLIC_SPEAR_HEAD_DATA.wrappers_connected - 1)
+
     def __init__(self, config: SpearHeadConfig = DEFAULT_CONFIG) -> None:
         self.config = config
         self.wrapper_server = SocketServer(self.config.wrapper_host, self.config.wrapper_port)
         self.wrapper_server.register_callback(SocketServerEvent.MESSAGE_RECEIVED, self._on_wrapper_message)
+        self.wrapper_server.register_callback(SocketServerEvent.CONNECTION_ACCEPTED, lambda _,_2,_3: self._on_device_connected())
+        self.wrapper_server.register_callback(SocketServerEvent.CONNECTION_TERMINATED, lambda _,_2,_3: self._on_device_disconnected())
 
         # setup All group
         group = GroupManager.create_group("All", "System created group containing all devices")
@@ -143,6 +157,6 @@ class SpearHead:
         while True:
             self._tick()
             time.sleep(0.1)
-            
+
         Logger.warn("Spear Head main loop has exited unexpectedly")
 

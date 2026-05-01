@@ -4,6 +4,8 @@ from enum import Enum
 
 class CallbackEvent(Enum):
     NEW_DEVICE = "new_device",
+    DEVICE_CONNECTED = "device_connected",
+    DEVICE_DISCONNECTED = "device_disconnected",
 
 class CallbackManager:
     callbacks: dict[CallbackEvent, list[callable]] = { event: [] for event in CallbackEvent } # type: ignore

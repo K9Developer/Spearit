@@ -12,15 +12,28 @@ from databases.db_types.campaigns.campaign_db import CampaignDB
 from databases.db_types.devices.device_db import DeviceDB
 from databases.db_types.devices.heartbeat_db import HeartbeatDB
 from databases.db_types.events.event_db import EventDB
+from databases.db_types.groups.group_db import GroupDB
+from databases.db_types.notifications.notification_db import NotificationDB
 from databases.db_types.rules.rule_db import RuleDB
+from databases.db_types.users.user_db import UserDB
 from databases.engine import SessionMaker
+from models.devices.device import Device
 from models.events.types.campaign import CampaignSeverity, CampaignStatus
+from models.managers.device_manager import DeviceManager
+from models.managers.group_manager import GroupManager
+from models.managers.notification_manager import NotificationManager
+from models.managers.user_manager import UserManager
+from models.notifications.notification import NotificationType
+from models.users.permission import Permission, UserAction
+from utils.types import HeartbeatDeviceInformation
 
 
 @dataclass(slots=True)
 class SeedConfig:
     seed: int
+    groups: int
     devices: int
+    users: int
     campaigns: int
     heartbeats_per_device: int
     events_per_device: int
@@ -62,6 +75,32 @@ RULE_TEMPLATES: list[dict[str, Any]] = [
     },
 ]
 
+GROUP_TEMPLATES: list[tuple[str, str]] = [
+    ("Core Network", "Primary office and central network segment"),
+    ("Remote Workforce", "Remote and laptop-heavy endpoints"),
+    ("Infrastructure", "Servers, gateways, and critical infra devices"),
+    ("Labs", "Testing and staging environments"),
+    ("Operations", "Kiosks and ops-focused systems"),
+]
+
+USER_TEMPLATES: list[tuple[str, str, str]] = [
+    ("Alice Operator", "alice.operator@spearit.local", "Spearit!123"),
+    ("Bob Analyst", "bob.analyst@spearit.local", "Spearit!123"),
+    ("Charlie Responder", "charlie.responder@spearit.local", "Spearit!123"),
+    ("Dana Manager", "dana.manager@spearit.local", "Spearit!123"),
+]
+
+NOTIFICATION_TEMPLATES: list[tuple[str, NotificationType]] = [
+    ("New suspicious traffic pattern detected during seeded run.", NotificationType.WARNING),
+    ("Seeded campaign activity updated for dashboard testing.", NotificationType.INFO),
+    ("A high-severity seeded event requires triage.", NotificationType.DANGER),
+    ("Device heartbeat drift exceeded expected threshold.", NotificationType.WARNING),
+    ("Rule evaluation completed with no blocking actions.", NotificationType.INFO),
+    ("Potential lateral movement chain detected.", NotificationType.DANGER),
+    ("Campaign timeline refreshed with new findings.", NotificationType.INFO),
+    ("Endpoint reported unusual DNS query burst.", NotificationType.WARNING),
+]
+
 
 def to_int(value: object) -> int:
     return int(value)  # type: ignore[arg-type]
@@ -77,42 +116,179 @@ def build_ip(index: int) -> str:
     return f"10.20.{third}.{fourth}"
 
 
-def upsert_devices(device_count: int) -> list[DeviceDB]:
-    rows: list[DeviceDB] = []
+def build_permissions(group_ids: list[int], device_ids: list[int], index: int) -> list[Permission]:
+    if not group_ids and not device_ids:
+        return []
 
-    with SessionMaker() as session:
-        for index in range(device_count):
-            profile_name, os_name = DEVICE_PROFILES[index % len(DEVICE_PROFILES)]
-            mac = build_mac(index)
-            ip = build_ip(index)
+    if index == 0:
+        return [
+            Permission(
+                type_=UserAction.ROOT,
+                affected_groups=group_ids,
+                affected_devices=device_ids,
+            )
+        ]
 
-            existing = session.query(DeviceDB).filter_by(mac_address=mac).first()
-            if existing is None:
-                existing = DeviceDB(
-                    device_name=f"{profile_name}-{index + 1:02d}",
-                    operating_system_details=os_name,
-                    last_known_ip_address=ip,
-                    mac_address=mac,
-                    handlers=[],
-                    note="Seeded for frontend testing",
-                    groups=[1 + (index % 3)],
-                    last_heartbeat_id=None,
-                )
-                session.add(existing)
-            else:
-                existing.device_name = f"{profile_name}-{index + 1:02d}"  # type: ignore
-                existing.operating_system_details = os_name  # type: ignore
-                existing.last_known_ip_address = ip  # type: ignore
-                existing.groups = [1 + (index % 3)]  # type: ignore
-                existing.note = "Seeded for frontend testing"  # type: ignore
+    group_slice = group_ids[index % max(1, len(group_ids))::2] or group_ids[:1]
+    device_slice = device_ids[index % max(1, len(device_ids))::3] or device_ids[:2]
+    return [
+        Permission(
+            type_=UserAction.CREATE_USER,
+            affected_groups=group_slice,
+            affected_devices=device_slice,
+        ),
+        Permission(
+            type_=UserAction.DELETE_USER,
+            affected_groups=group_slice,
+            affected_devices=device_slice,
+        ),
+    ]
 
-            rows.append(existing)
 
-        session.commit()
-        for row in rows:
-            session.refresh(row)
+def upsert_groups(group_count: int) -> list[int]:
+    group_ids: list[int] = []
+
+    for index in range(group_count):
+        base_name, description = GROUP_TEMPLATES[index % len(GROUP_TEMPLATES)]
+        group_name = f"{base_name} {index + 1:02d}"
+        existing = GroupManager.get_group_by_name(group_name)
+
+        if existing is None:
+            created = GroupManager.create_group(group_name, description)
+            if created.group_id is None:
+                continue
+            group_ids.append(created.group_id)
+        else:
+            if existing.group_id is None:
+                continue
+            GroupManager.update_group_description(existing.group_id, description)
+            group_ids.append(existing.group_id)
+
+    return group_ids
+
+
+def upsert_devices(device_count: int, group_ids: list[int]) -> list[Device]:
+    rows: list[Device] = []
+
+    for index in range(device_count):
+        profile_name, os_name = DEVICE_PROFILES[index % len(DEVICE_PROFILES)]
+        mac = build_mac(index)
+        ip = build_ip(index)
+        assigned_group_id = group_ids[index % len(group_ids)] if group_ids else None
+
+        heartbeat_info = HeartbeatDeviceInformation(
+            device_name=f"{profile_name}-{index + 1:02d}",
+            os_details=os_name,
+            ip_address=ip,
+            mac_address=mac,
+        )
+        device_id = DeviceManager.submit_device_info(heartbeat_info)
+        DeviceManager.set_device_note(device_id, "Seeded for frontend testing")
+
+        existing_groups = list(GroupManager.get_groups_for_device(device_id))
+        for group in existing_groups:
+            if group.group_id is None:
+                continue
+            if assigned_group_id is not None and group.group_id == assigned_group_id:
+                continue
+            GroupManager.remove_device_from_group(group.group_id, device_id)
+
+        if assigned_group_id is not None:
+            GroupManager.add_device_to_group(assigned_group_id, device_id)
+
+        device = DeviceManager.get_device_by_id(device_id)
+        if device is not None:
+            rows.append(device)
 
     return rows
+
+
+def upsert_users(user_count: int, group_ids: list[int], device_ids: list[int]) -> list[int]:
+    user_ids: list[int] = []
+
+    for index in range(user_count):
+        full_name, email, raw_password = USER_TEMPLATES[index % len(USER_TEMPLATES)]
+        permissions = build_permissions(group_ids, device_ids, index)
+        existing = UserManager.get_user_by_email(email)
+
+        if existing is None:
+            created = UserManager.create_user(
+                username=full_name,
+                email=email,
+                raw_password=raw_password,
+                permissions=permissions,
+            )
+            if created is None or created.user_id is None:
+                continue
+            user_ids.append(created.user_id)
+        else:
+            existing.full_name = full_name
+            existing.permissions = permissions
+            existing.token = None
+            existing.update_db()
+            if existing.user_id is not None:
+                user_ids.append(existing.user_id)
+
+    return user_ids
+
+
+def sync_group_handlers(group_ids: list[int], user_ids: list[int]) -> None:
+    if not group_ids or not user_ids:
+        return
+
+    for index, group_id in enumerate(group_ids):
+        group = GroupManager.get_group_by_id(group_id)
+        if group is None:
+            continue
+
+        primary_handler = user_ids[index % len(user_ids)]
+        secondary_handler = user_ids[(index + 1) % len(user_ids)] if len(user_ids) > 1 else primary_handler
+        target_handlers = {primary_handler, secondary_handler}
+        current_handlers = set(group.handlers)
+
+        for handler_id in current_handlers - target_handlers:
+            GroupManager.remove_handler_from_group(group_id, handler_id)
+
+        for handler_id in target_handlers - current_handlers:
+            GroupManager.add_handler_to_group(group_id, handler_id)
+
+
+def create_notifications(
+    user_ids: list[int],
+    group_ids: list[int],
+    events_created: int,
+    rng: random.Random,
+) -> int:
+    if not user_ids:
+        return 0
+
+    created = 0
+
+    notification_target = max(24, len(user_ids) * 10, events_created // 2)
+    for index in range(notification_target):
+        message, notification_type = NOTIFICATION_TEMPLATES[index % len(NOTIFICATION_TEMPLATES)]
+        target_users: list[int]
+        if index % 9 == 0:
+            target_users = user_ids
+        else:
+            user_span = 1 if len(user_ids) == 1 else rng.randint(1, min(3, len(user_ids)))
+            target_users = rng.sample(user_ids, k=user_span)
+
+        suffix = f" (groups={len(group_ids)}, events={events_created}, batch={index + 1})"
+        notification = NotificationManager.create_notification(
+            message=message + suffix,
+            for_users=target_users,
+            type_=notification_type,
+            link="/notifications",
+        )
+        if notification.notification_id is not None:
+            created += 1
+            if target_users and rng.random() < 0.45:
+                read_count = rng.randint(1, len(target_users))
+                for user_id in rng.sample(target_users, k=read_count):
+                    NotificationManager.mark_notification_as_read(notification.notification_id, user_id)
+
+    return created
 
 
 def upsert_rules(device_group_ids: list[int]) -> list[RuleDB]:
@@ -207,12 +383,14 @@ def upsert_campaigns(campaign_count: int, device_ids: list[int]) -> list[Campaig
     return rows
 
 
-def create_heartbeats(devices: list[DeviceDB], heartbeats_per_device: int, rng: random.Random) -> int:
+def create_heartbeats(devices: list[Device], heartbeats_per_device: int, rng: random.Random) -> int:
     total = 0
     now = datetime.now(timezone.utc)
 
     with SessionMaker() as session:
         for device in devices:
+            if device.device_id is None:
+                continue
             device_id = to_int(device.device_id)
             latest_heartbeat_id: int | None = None
 
@@ -238,7 +416,9 @@ def create_heartbeats(devices: list[DeviceDB], heartbeats_per_device: int, rng: 
                 latest_heartbeat_id = to_int(heartbeat.heartbeat_id)
                 total += 1
 
-            device.last_heartbeat_id = latest_heartbeat_id  # type: ignore
+            device_db = session.get(DeviceDB, device_id)
+            if device_db is not None:
+                device_db.last_heartbeat_id = latest_heartbeat_id  # type: ignore
 
         session.commit()
 
@@ -246,7 +426,7 @@ def create_heartbeats(devices: list[DeviceDB], heartbeats_per_device: int, rng: 
 
 
 def create_events(
-    devices: list[DeviceDB],
+    devices: list[Device],
     rules: list[RuleDB],
     campaigns: list[CampaignDB],
     events_per_device: int,
@@ -260,13 +440,15 @@ def create_events(
 
     with SessionMaker() as session:
         for device in devices:
+            if device.device_id is None:
+                continue
             device_id = to_int(device.device_id)
 
             for index in range(events_per_device):
                 rule = rules[(index + device_id) % len(rules)]
                 campaign = campaigns[(index + device_id) % len(campaigns)] if campaigns else None
 
-                source_ip = str(device.last_known_ip_address or "0.0.0.0")
+                source_ip = str(device.ip_address or "0.0.0.0")
                 dest_ip = f"198.51.100.{(index % 200) + 1}"
                 source_port = 1024 + ((index * 17) % 40000)
                 dest_port = [443, 53, 80, 22, 8080][index % 5]
@@ -311,18 +493,23 @@ def create_events(
 
 def clear_seed_target_tables() -> None:
     with SessionMaker() as session:
+        session.query(NotificationDB).delete()
         session.query(EventDB).delete()
         session.query(HeartbeatDB).delete()
         session.query(CampaignDB).delete()
         session.query(RuleDB).delete()
+        session.query(UserDB).delete()
         session.query(DeviceDB).delete()
+        session.query(GroupDB).delete()
         session.commit()
 
 
 def parse_args() -> SeedConfig:
     parser = argparse.ArgumentParser(description="Seed SpearHead DB with dummy test data.")
     parser.add_argument("--seed", type=int, default=1337, help="Random seed for reproducible data")
+    parser.add_argument("--groups", type=int, default=3, help="How many groups to upsert")
     parser.add_argument("--devices", type=int, default=12, help="How many devices to upsert")
+    parser.add_argument("--users", type=int, default=4, help="How many users to upsert")
     parser.add_argument("--campaigns", type=int, default=4, help="How many campaigns to upsert")
     parser.add_argument("--heartbeats-per-device", type=int, default=8, help="Heartbeats to create per device")
     parser.add_argument("--events-per-device", type=int, default=5, help="Events to create per device")
@@ -335,7 +522,9 @@ def parse_args() -> SeedConfig:
     args = parser.parse_args()
     return SeedConfig(
         seed=args.seed,
+        groups=max(1, args.groups),
         devices=max(1, args.devices),
+        users=max(1, args.users),
         campaigns=max(1, args.campaigns),
         heartbeats_per_device=max(1, args.heartbeats_per_device),
         events_per_device=max(0, args.events_per_device),
@@ -350,21 +539,27 @@ def seed_database(config: SeedConfig) -> None:
     if config.reset:
         clear_seed_target_tables()
 
-    devices = upsert_devices(config.devices)
-    device_ids = [to_int(device.device_id) for device in devices]
-    group_ids = sorted({1 + (index % 3) for index in range(config.devices)})
+    group_ids = upsert_groups(config.groups)
+    devices = upsert_devices(config.devices, group_ids)
+    device_ids = [to_int(device.device_id) for device in devices if device.device_id is not None]
+    user_ids = upsert_users(config.users, group_ids, device_ids)
+    sync_group_handlers(group_ids, user_ids)
 
     rules = upsert_rules(group_ids)
     campaigns = upsert_campaigns(config.campaigns, device_ids)
     created_heartbeats = create_heartbeats(devices, config.heartbeats_per_device, rng)
     created_events = create_events(devices, rules, campaigns, config.events_per_device, rng)
+    created_notifications = create_notifications(user_ids, group_ids, created_events, rng)
 
     print("Dummy data generation complete:")
+    print(f"- Groups: {len(group_ids)}")
     print(f"- Devices: {len(devices)}")
+    print(f"- Users: {len(user_ids)}")
     print(f"- Rules: {len(rules)}")
     print(f"- Campaigns: {len(campaigns)}")
     print(f"- Heartbeats created: {created_heartbeats}")
     print(f"- Events created: {created_events}")
+    print(f"- Notifications created: {created_notifications}")
     print(f"- Reset before seeding: {'yes' if config.reset else 'no'}")
 
 

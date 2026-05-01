@@ -10,7 +10,12 @@ const StartupNavigator = () => {
 
     useEffect(() => {
         const checkToken = async () => {
+            if (!localStorage.getItem("token")) {
+                navigate("/login");
+                return;
+            }
             const res = await APIManager.loginWithToken(login);
+
             if (res.success) {
                 navigate("/dashboard");
             } else {

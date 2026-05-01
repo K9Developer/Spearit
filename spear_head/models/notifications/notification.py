@@ -1,6 +1,7 @@
 
 from enum import Enum
 from datetime import datetime
+from typing import Any
 from databases.db_types.notifications.notification_db import NotificationDB
 from databases.engine import SessionMaker
 
@@ -56,3 +57,11 @@ class Notification:
                 session.commit()
 
         self.notification_id = notification_id  # type: ignore
+
+    def to_json(self) -> dict[str, Any]:
+        return {
+            "notification_id": self.notification_id,
+            "message": self.message,
+            "type": self.type.value,
+            "created_at": self.created_at.isoformat(),
+        }
