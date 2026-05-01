@@ -16,11 +16,11 @@ def from_json_permissions(json_perms: list[Any]) -> list[Permission]:
     permissions: list[Permission] = []
     for perm in json_perms:
         permission = Permission(
-            type_=UserAction(perm["type_"]),
+            type_=UserAction(perm.get("type", perm.get("type_"))), # type: ignore
             affected_groups=perm.get("affected_groups", []),
             affected_devices=perm.get("affected_devices", []),
         )
-        if len(permission.affected_groups) == 0 and len(permission.affected_devices) == 0:
+        if len(permission.affected_groups) == 0 and len(permission.affected_devices) == 0 and permission.type_ != UserAction.ROOT and permission.type_ != UserAction.CONTROL_USERS and permission.type_ != UserAction.CONTROL_GROUPS:
             continue
         permissions.append(permission)
     return permissions

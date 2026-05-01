@@ -2,9 +2,9 @@ from enum import Enum
 from dataclasses import dataclass
 
 class UserAction(Enum):
-    ROOT = -1
-    CREATE_USER = 0
-    DELETE_USER = 1
+    ROOT = "root"
+    CONTROL_USERS = "control_users"
+    CONTROL_GROUPS = "control_groups"
 
 class ActionTargetType(Enum):
     NONE = -1
@@ -24,6 +24,13 @@ class Permission:
             affected_groups=[],
             affected_devices=[],
         )
+    
+    def to_json(self) -> dict:
+        return {
+            "type": self.type_.value,
+            "affected_groups": self.affected_groups,
+            "affected_devices": self.affected_devices,
+        }
 
 @dataclass
 class ActionTarget:
@@ -41,3 +48,10 @@ class ActionTarget:
     @staticmethod
     def group(group_id: int) -> 'ActionTarget':
         return ActionTarget(ActionTargetType.GROUP, group_id)
+    
+def get_description_permissions() -> dict[str, str]:
+    return {
+        UserAction.ROOT.value: "Full access to all actions and targets.",
+        UserAction.CONTROL_USERS.value: "Permission to create, edit, and delete users.",
+        UserAction.CONTROL_GROUPS.value: "Permission to create, edit, and delete groups.",
+    }

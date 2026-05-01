@@ -57,7 +57,7 @@ export default function Modal({ isOpen, onClose, title, children }: Props) {
             <div
                 className={`relative z-10 w-full max-w-lg mx-4 bg-foreground rounded-md shadow-lg max-h-[80vh] overflow-y-auto transform transition-all duration-150 ${visible ? "opacity-100 scale-100 translate-y-0" : "opacity-0 scale-95 translate-y-2"}`}
             >
-                <div className="flex justify-between items-center sticky top-0 bg-foreground py-3 px-5 shadow-2xl">
+                <div className="flex justify-between items-center sticky top-0 bg-foreground py-3 px-5 shadow-2xl z-50">
                     <p className="uppercase font-bold text-md">{title}</p>
                     <div onClick={onClose} className="cursor-pointer select-none p-2">
                         &times;

@@ -6,7 +6,7 @@ from fastapi import Body, FastAPI, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 import uvicorn
 from sqlalchemy import text
-
+from models.events.types.event import EventKind
 from constants.constants import TOKEN_VALIDITY_DURATION_HOURS, SPEAR_HEAD_API_PORT
 from databases.engine import SessionMaker
 from models.events.types import campaign
@@ -18,6 +18,8 @@ from models.managers.heartbeat_manager import HeartbeatManager
 from models.managers.notification_manager import NotificationManager
 from models.managers.user_manager import UserManager
 from spear_head import PUBLIC_SPEAR_HEAD_DATA
+from models.managers.group_manager import GroupManager
+from models.users.permission import get_description_permissions
 from utils.https_utils import ensure_self_signed_cert
 from utils.jwt_utils import decode_user_token, make_user_token
 from utils.permission_utils import ActionTarget, UserAction, UserPermissionResponse, check_user_permission, from_json_permissions, verify_token_validity
@@ -87,7 +89,7 @@ def create_new_user(
         permissions: list[Any] = Body(...),
         token: str = Body(...)
     ):
-    if (res := check_user_permission(token, UserAction.CREATE_USER, ActionTarget.none())) != UserPermissionResponse.ALLOWED:
+    if (res := check_user_permission(token, UserAction.CONTROL_USERS, ActionTarget.none())) != UserPermissionResponse.ALLOWED:
         return permission_error_to_http_response(res, response)
 
     res = UserManager.create_user(name, email, password, from_json_permissions(permissions))
@@ -114,7 +116,7 @@ def login_user_credentials(
     if tkn is None:
         Logger.error(f"Failed to generate token for user_id: {user.user_id}")
         return HTTPResponse.error(response, "Failed to generate session token")
-    return HTTPResponse.ok(response, "Login successful", {"token": tkn, "user": {"id": user.user_id, "fullname": user.full_name, "email": user.email}})
+    return HTTPResponse.ok(response, "Login successful", {"token": tkn, "user": {"id": user.user_id, "fullname": user.full_name, "email": user.email, "permissions": [perm.to_json() for perm in user.permissions]}})
 
 @app.post("/users/login_user_token")
 def login_user_token(
@@ -137,7 +139,7 @@ def login_user_token(
     if tkn is None:
         Logger.error(f"Failed to generate token for user_id: {user.user_id}")
         return HTTPResponse.error(response, "Failed to generate session token")
-    return HTTPResponse.ok(response, "Login successful", {"token": tkn, "user": {"id": user.user_id, "fullname": user.full_name, "email": user.email}})
+    return HTTPResponse.ok(response, "Login successful", {"token": tkn, "user": {"id": user.user_id, "fullname": user.full_name, "email": user.email, "permissions": [perm.to_json() for perm in user.permissions]}})
 
 @app.post("/overview")
 def overview(
@@ -172,7 +174,6 @@ def overview(
         Logger.warn(f"Overview access failed for token: {token}")
         return HTTPResponse.error(response, "Invalid token")
     devices_under_user = list(DeviceManager.get_devices_by_handler(user_info.user_id))
-
     data["registered_devices"] = len(devices_under_user)
     data["alerts_24h"] = len(list(NotificationManager.get_notifications_for_user_dated(
         user_info.user_id,
@@ -181,8 +182,14 @@ def overview(
     )))
 
     campaigns = CampaignManager.get_all_campaigns_for_user(user_info.user_id)
-    data["critical_campaigns"] = len([c for c in campaigns if c.severity == campaign.CampaignSeverity.HIGH])
-    data["active_campaigns"] = [c.to_json() for c in campaigns if c.status == campaign.CampaignStatus.ONGOING]
+    data["critical_campaigns"] = 0
+    data["active_campaigns"] = []
+    for c in campaigns:
+        if c.status == campaign.CampaignStatus.ONGOING:
+            data["active_campaigns"].append(c.to_json())
+            if c.severity == campaign.CampaignSeverity.HIGH:
+                data["critical_campaigns"] += 1
+
     # TODO: Baselines
     data["alerts"] = [n.to_json() for n in NotificationManager.get_unread_notifications_for_user(user_info.user_id)]
     # top 5
@@ -205,11 +212,179 @@ def overview(
     last_hb_time = HeartbeatManager.get_last_heartbeat_time()
     if last_hb_time is not None and last_hb_time.tzinfo is None:
         last_hb_time = last_hb_time.replace(tzinfo=timezone.utc)
-    data["system_health"]["last_heartbeat_age"] = int((datetime.now(timezone.utc) - last_hb_time).total_seconds()) if last_hb_time else -1 # type: ignore
+    print(last_hb_time)
+    data["system_health"]["last_heartbeat_age"] = last_hb_time.timestamp() * 1000 if last_hb_time else -1 # type: ignore
     total_device_count = DeviceManager.get_device_count()
     data["system_health"]["wrappers_connected_precentage"] = PUBLIC_SPEAR_HEAD_DATA.wrappers_connected / total_device_count * 100 if total_device_count > 0 else 0 # type: ignore
+
+    data["rule_violations_ph"] = len(list(EventManager.get_events_date_range(datetime.now(timezone.utc) - timedelta(hours=1), datetime.now(timezone.utc)))) # type: ignore
+
     return HTTPResponse.ok(response, "Overview data retrieved successfully", data)
 
+@app.post("/users/metadata")
+def get_user_metadata(
+        response: Response,
+        token: str = Body(..., embed=True) 
+    ):
+    usr, succ = verify_token_validity(token)
+    if not succ or usr is None:
+        Logger.warn(f"User metadata access with invalid/expired token: {token}")
+        return HTTPResponse.token_error(response)
+    
+    res = {
+        "permission_types": get_description_permissions(),
+        "group_ids": {g.group_id: g.group_name for g in GroupManager.get_groups_handled_by_user(usr.user_id)}, # type: ignore
+        "device_ids": {d.device_id: d.device_name for d in DeviceManager.get_devices_by_handler(usr.user_id)} # type: ignore
+    }
+    return HTTPResponse.ok(response, "User metadata retrieved successfully", res)
+
+@app.post("/users/list")
+def list_users(
+        response: Response,
+        token: str = Body(..., embed=True) 
+    ):
+    if (res := check_user_permission(token, UserAction.CONTROL_USERS, ActionTarget.none())) != UserPermissionResponse.ALLOWED:
+        return permission_error_to_http_response(res, response)
+
+    users = []
+    for user in UserManager.get_all_users():
+        users.append({
+            "id": user.user_id,
+            "fullname": user.full_name,
+            "email": user.email,
+            "permissions": [perm.to_json() for perm in user.permissions]
+        })
+    return HTTPResponse.ok(response, "Users listed successfully", {"users": users})
+
+@app.post("/users/set_password")
+def set_user_password(
+        response: Response,
+        token: str = Body(..., embed=True) ,
+        user_id: int = Body(...),
+        new_password: str = Body(...)
+    ):
+    if (res := check_user_permission(token, UserAction.CONTROL_USERS, ActionTarget.none())) != UserPermissionResponse.ALLOWED:
+        return permission_error_to_http_response(res, response)
+
+    if not UserManager.set_user_password(user_id, new_password):
+        return HTTPResponse.error(response, "Failed to set user password")
+    return HTTPResponse.ok(response, "User password updated successfully")
+
+@app.post("/users/update_permissions")
+def update_user_permissions(
+        response: Response,
+        token: str = Body(..., embed=True) ,
+        user_id: int = Body(...),
+        permissions: list[Any] = Body(...)
+    ):
+    if (res := check_user_permission(token, UserAction.CONTROL_USERS, ActionTarget.none())) != UserPermissionResponse.ALLOWED:
+        return permission_error_to_http_response(res, response)
+
+    # disallow removing own CONTROL_USERS, ROOT permissions
+    # only allow adding permissions to other users when the current user has them / is root
+    usr, _ = verify_token_validity(token)
+    if usr is None:
+        return HTTPResponse.error(response, "Invalid session token")
+    
+    other_usr = UserManager.get_user_by_id(user_id)
+    if other_usr is None:
+        return HTTPResponse.error(response, "User not found")
+    
+    parsed_perms = from_json_permissions(permissions)
+    if usr.user_id == user_id:
+        for perm in parsed_perms:
+            print(perm.type_)
+        has_control_users = any(perm.type_ == UserAction.CONTROL_USERS for perm in parsed_perms)
+        has_root = any(perm.type_ == UserAction.ROOT for perm in parsed_perms)
+        if not has_control_users or not has_root:
+            return HTTPResponse.error(response, "Cannot remove own CONTROL_USERS or ROOT permissions")
+
+    assigning_usr_perms = set(perm.type_ for perm in usr.permissions)
+    if UserAction.ROOT not in assigning_usr_perms:
+        for perm in parsed_perms:
+            if perm.type_ not in assigning_usr_perms:
+                return HTTPResponse.error(response, f"Cannot assign permission {perm.type_.name} that the current user does not have")
+
+    if not UserManager.set_user_permissions(user_id, permissions):
+        return HTTPResponse.error(response, "Failed to update user permissions")
+    return HTTPResponse.ok(response, "User permissions updated successfully")
+
+@app.post("/users/create")
+def create_user(
+        response: Response,
+        email: str = Body(...),
+        temporary_password: str = Body(...),
+        permissions: list[Any] = Body(...),
+        token: str = Body(...)
+    ):
+    if (res := check_user_permission(token, UserAction.CONTROL_USERS, ActionTarget.none())) != UserPermissionResponse.ALLOWED:
+        return permission_error_to_http_response(res, response)
+
+    res = UserManager.create_user(email, email, temporary_password, from_json_permissions(permissions))
+    if res is None:
+        return HTTPResponse.error(response, "Failed to create user")
+    
+    return HTTPResponse.ok(response, "User created successfully", {"session": res.token})
+
+@app.post("/users/delete")
+def delete_user(
+        response: Response,
+        token: str = Body(..., embed=True),
+        user_id: int = Body(...)
+    ):
+    if (res := check_user_permission(token, UserAction.CONTROL_USERS, ActionTarget.none())) != UserPermissionResponse.ALLOWED:
+        return permission_error_to_http_response(res, response)
+
+    data = decode_user_token(token)
+    if not data or user_id == data.user_id:
+        return HTTPResponse.error(response, "Cannot delete own user account")
+
+    if not UserManager.delete_user_by_id(user_id):
+        return HTTPResponse.error(response, "Failed to delete user")
+    return HTTPResponse.ok(response, "User deleted successfully")
+
+@app.post("/devices/list")
+def list_devices(
+        response: Response,
+        token: str = Body(..., embed=True) 
+    ):
+    usr, succ = verify_token_validity(token)
+    if not succ or usr is None or usr.user_id is None:
+        Logger.warn(f"Device list access with invalid/expired token: {token}")
+        return HTTPResponse.token_error(response)
+
+    devices = []
+    for device in DeviceManager.get_devices_by_handler(usr.user_id):
+        devices.append(device.to_json())
+    return HTTPResponse.ok(response, "Devices listed successfully", {"devices": devices})
+
+@app.post("/devices/details")
+def device_details(
+        response: Response,
+        token: str = Body(..., embed=True) ,
+        device_id: int = Body(...)
+    ):
+    usr, succ = verify_token_validity(token)
+    if not succ or usr is None or usr.user_id is None:
+        Logger.warn(f"Device details access with invalid/expired token: {token}")
+        return HTTPResponse.token_error(response)
+
+    device = DeviceManager.get_device_by_id(device_id)
+    managed_devices = set(d.device_id for d in DeviceManager.get_devices_by_handler(usr.user_id) if d.device_id is not None) # type: ignore
+    if device is None or device.device_id not in managed_devices:
+        Logger.warn(f"Device details access denied for device_id: {device_id} with token: {token}")
+        return HTTPResponse.permission_denied(response)
+    
+    # TODO: REMOVE FILTER
+    print([e.to_json() for e in EventManager.get_events_by_device_id(device_id)]) # type: ignore
+    events = list(filter(lambda e: e.event_type == EventKind.PACKET, EventManager.get_events_by_device_id(device_id))) # type: ignore
+    data = {
+        "device": device.to_json(),
+        "events": [e.to_json() for e in events],
+        "campaigns": [c.to_json() for c in CampaignManager.get_campaigns_by_device_id(device_id)],
+    }
+    
+    return HTTPResponse.ok(response, "Device details retrieved successfully", data)
 
 @app.get("/ping")
 def ping():

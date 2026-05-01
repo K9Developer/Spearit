@@ -101,6 +101,7 @@ class CampaignManager:
             Logger.debug("Creating new campaign for event.")
             new_campaign = Campaign()
             new_campaign.add_event(event)
+            new_campaign.initial_event_time = datetime.fromtimestamp(event.timestamp_ns / 1e9)
             new_campaign.update_db()
             CampaignManager.ongoing_campaigns.append(new_campaign)
     
@@ -173,6 +174,14 @@ class CampaignManager:
     
     @staticmethod
     def get_all_campaigns_for_user(user_id: int) -> Generator[Campaign, None, None]:
+        from models.managers.user_manager import UserManager
+
+        user = UserManager.get_user_by_id(user_id)
+        if user is None: return
+        if user.is_superuser():
+            yield from CampaignManager.get_all_campaigns()
+            return
+
         for campaign in CampaignManager.get_all_campaigns():
             for event in campaign.events:
                 if event.device and user_id in event.device.handlers: # type: ignore
@@ -183,3 +192,11 @@ class CampaignManager:
                     if event.device and group.group_id in event.device.groups: # type: ignore
                         yield campaign
                         break
+
+    @staticmethod
+    def get_campaigns_by_device_id(device_id: int) -> Generator[Campaign, None, None]:
+        for campaign in CampaignManager.get_all_campaigns():
+            for event in campaign.events:
+                if event.device and event.device.device_id == device_id: # type: ignore
+                    yield campaign
+                    break

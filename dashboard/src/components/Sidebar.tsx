@@ -123,7 +123,7 @@ const Sidebar = ({ config, className = "", defaultOpen = true, onToggle, visible
                                     className={`
                                         uppercase text-xs font-semibold tracking-wide text-text-secondary whitespace-nowrap overflow-hidden
                                         transition-all duration-300 ease-in-out
-                                        ${isOpen ? "opacity-100 max-w-[200px] ml-2" : "opacity-0 max-w-0 ml-0"}
+                                        ${isOpen ? "opacity-100 max-w-50 ml-2" : "opacity-0 max-w-0 ml-0"}
                                     `}
                                 >
                                     {config.title}
@@ -147,7 +147,9 @@ const Sidebar = ({ config, className = "", defaultOpen = true, onToggle, visible
                             <div
                                 key={item.title}
                                 className="relative overflow-visible"
-                                onPointerEnter={() => startHover(item.title)}
+                                onPointerEnter={() => {
+                                    startHover(item.title);
+                                }}
                                 onPointerLeave={stopHover}
                             >
                                 <Hint
@@ -163,12 +165,12 @@ const Sidebar = ({ config, className = "", defaultOpen = true, onToggle, visible
                                     }}
                                     disabled={item.disabled}
                                     className={`
-                                        w-full h-11 rounded-lg
-                                        flex items-center
-                                        px-3
-                                        transition-colors duration-200
-                                        ${item.disabled ? "opacity-45 cursor-not-allowed" : "hover:bg-background/70 cursor-pointer"}
-                                    `}
+        w-full h-11 rounded-lg
+        flex items-center
+        px-3 overflow-hidden
+        transition-colors duration-200
+        ${item.disabled ? "opacity-45 cursor-not-allowed" : "hover:bg-background/70 cursor-pointer"}
+    `}
                                 >
                                     <span
                                         className={`
@@ -181,10 +183,10 @@ const Sidebar = ({ config, className = "", defaultOpen = true, onToggle, visible
 
                                     <span
                                         className={`
-                                            ml-3 overflow-hidden whitespace-nowrap text-sm text-text-primary
-                                            transition-all duration-300 ease-in-out
-                                            ${isOpen ? "opacity-100 translate-x-0" : "opacity-0 -translate-x-2 pointer-events-none"}
-                                        `}
+        overflow-hidden whitespace-nowrap text-sm text-text-primary
+        transition-all duration-300 ease-in-out
+        ${isOpen ? "opacity-100 max-w-45 ml-3 translate-x-0" : "opacity-0 max-w-0 ml-0 -translate-x-2 pointer-events-none"}
+    `}
                                     >
                                         {item.title}
                                     </span>

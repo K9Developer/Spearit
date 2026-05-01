@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone
 from models.logger import Logger
 from typing import Any
 
@@ -46,7 +46,17 @@ class InternalHeartbeatManager:
             return
         
         Logger.debug(f"Processing heartbeat from MAC: {heartbeat_data['mac_address']}")
-        hb = InternalHeartbeatManager._parse_raw_heartbeat(heartbeat_data, datetime.now())
+        hb = InternalHeartbeatManager._parse_raw_heartbeat(heartbeat_data, datetime.now(timezone.utc))
 
-        device_id = DeviceManager._submit_device_info(hb.device_info)
+        device_id = DeviceManager.submit_device_info(hb.device_info)
+        
+        # create device entries for contacted devices if they don't exist
+        for mac in hb.network_details.contacted_macs:
+            if mac == "00:00:00:00:00:00" or not is_valid_mac(mac):
+                Logger.warn(f"Contacted MAC address is invalid ({mac}); skipping device info submission.")
+                continue
+            hdi = HeartbeatDeviceInformation.default()
+            hdi.mac_address = mac
+            DeviceManager.submit_device_info(hdi)
+
         hb.update_db(device_id)

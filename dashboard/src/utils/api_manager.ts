@@ -1,11 +1,11 @@
 import { API_BASE_URL } from "@/constants";
-import { useUser, type User } from "@/context/User";
-import type { Campaign } from "./types";
+import { type User } from "@/context/userTypes";
+import type { Campaign, Device, Event, ManagedUser, Notification, Permission } from "./types";
 
-interface APIResponse {
+export interface APIResponse<TData = unknown> {
     success: boolean;
     message: string;
-    data?: any;
+    data?: TData;
 }
 
 /*data = {
@@ -27,7 +27,7 @@ interface APIResponse {
             "last_heartbeat_age": -1
         }
     } */
-interface APIOverviewDataResponse extends APIResponse {
+export interface APIOverviewDataResponse extends APIResponse {
     data?: {
         registered_devices: number;
         alerts_24h: number;
@@ -43,15 +43,15 @@ interface APIOverviewDataResponse extends APIResponse {
                 event_count: number;
             }[];
             "10_min_interval_counts": {
-                start: string; // ISO date string
-                end: string; // ISO date string
+                start: string;
+                end: string;
                 count: number;
             }[];
         };
         recently_changed_rules: {
             rule_id: number;
             rule_name: string;
-            last_updated: string; // ISO date string
+            last_updated: string;
         }[];
         system_health: {
             spearhead_status: string;
@@ -61,43 +61,93 @@ interface APIOverviewDataResponse extends APIResponse {
     };
 }
 
+export type OverviewData = NonNullable<APIOverviewDataResponse["data"]>;
+
+export type UserManagementMetadata = {
+    permission_types: Record<string, string>;
+    group_ids: Record<string, string>;
+    device_ids: Record<string, string>;
+};
+
+export type APIUserManagementMetadataResponse = APIResponse<UserManagementMetadata>;
+
+export type UsersListData = {
+    users: ManagedUser[];
+};
+
+export type APIUsersListResponse = APIResponse<UsersListData>;
+
+export type DevicesListData = {
+    devices: Device[];
+};
+
+export type APIDevicesListResponse = APIResponse<DevicesListData>;
+
+export type DeviceDetailsData = {
+    device: Device;
+    events: Event[];
+    campaigns: Campaign[];
+};
+
+export type APIDeviceDetailsResponse = APIResponse<DeviceDetailsData>;
+
+export type UserData = {
+    user: ManagedUser;
+};
+
+export type APIUserResponse = APIResponse<UserData>;
+
+type LoginResponse = APIResponse<{
+    token: string;
+    user: User;
+}>;
+
 export default class APIManager {
-    private static async request(endpoint: string, data: any, method: string = "GET"): Promise<APIResponse> {
+    private static async request<TData = unknown>(
+        endpoint: string,
+        data: Record<string, unknown> = {},
+        method: string = "GET",
+    ): Promise<APIResponse<TData>> {
         try {
             const token = localStorage.getItem("token");
+            const payload: Record<string, unknown> = { ...data };
             if (token) {
-                data.token = token;
+                payload.token = token;
             }
-            console.log(`Making API request to ${API_BASE_URL}${endpoint} with data:`, data);
+            console.log(`Making API request to ${API_BASE_URL}${endpoint} with data:`, payload);
             const res = await fetch(`${API_BASE_URL}${endpoint}`, {
                 method: method,
                 headers: { "Content-Type": "application/json" },
                 credentials: "include",
-                body: JSON.stringify(data),
+                body: JSON.stringify(payload),
             });
 
             const resData = await res.json();
             if (resData?.message === "Invalid or expired token") {
                 localStorage.removeItem("token");
                 window.location.href = "/";
-                return { success: false, message: "Session expired. Please log in again." };
+                return { success: false, message: "Session expired. Please log in again." } as APIResponse<TData>;
             }
             if (!res.ok) {
-                return { success: false, message: resData.message || "Request Failed" };
+                return { success: false, message: resData.message || "Request Failed" } as APIResponse<TData>;
             }
 
-            return { success: resData?.status != "error", message: resData.message || "", data: resData.data };
+            return {
+                success: resData?.status != "error",
+                message: resData.message || "",
+                data: resData.data as TData,
+            };
         } catch (error) {
             return {
                 success: false,
                 message: error instanceof Error ? error.message : "An unknown error occurred",
-            };
+            } as APIResponse<TData>;
         }
     }
     
     static async loginWithCredentials(email: string, password: string, userContextLogin: (user: User) => void): Promise<APIResponse> {
-        const res = await this.request("/users/login_user_credentials", { email, password }, "POST");
-        if (!res.data?.token) {
+        const res = await this.request<LoginResponse["data"]>("/users/login_user_credentials", { email, password }, "POST");
+        if (!res.data?.token || !res.data.user) {
             return { success: false, message: "Invalid credentials" };
         }
         console.log("Login successful, received token:", res.data.token);
@@ -107,25 +157,63 @@ export default class APIManager {
             id: res.data.user.id,
             fullname: res.data.user.fullname,
             email: res.data.user.email,
+            permissions: (res.data.user.permissions ?? []) as Permission[],
         })
 
         return res;
     }
 
     static async loginWithToken(userContextLogin: (user: User) => void): Promise<APIResponse> {
-        const res = await this.request("/users/login_user_token", {}, "POST");
-        if (res.success && res.data?.token) {
+        const res = await this.request<LoginResponse["data"]>("/users/login_user_token", {}, "POST");
+        if (res.success && res.data?.token && res.data.user) {
             localStorage.setItem("token", res.data.token);
             userContextLogin({
                 id: res.data.user.id,
                 fullname: res.data.user.fullname,
                 email: res.data.user.email,
+                permissions: (res.data.user.permissions ?? []) as Permission[],
             });
         }
         return res;
     }
 
     static async getOverviewData(): Promise<APIOverviewDataResponse> {
-        return await this.request("/overview", {}, "POST");
+        return await this.request<APIOverviewDataResponse["data"]>("/overview", {}, "POST");
+    }
+
+    static async getUserManagementMetadata(): Promise<APIUserManagementMetadataResponse> {
+        return await this.request<UserManagementMetadata>("/users/metadata", {}, "POST");
+    }
+
+    static async listUsers(): Promise<APIUsersListResponse> {
+        return await this.request<UsersListData>("/users/list", {}, "POST");
+    }
+
+    static async createUser(email: string, temporaryPassword: string, permissions: Permission[]): Promise<APIUserResponse> {
+        return await this.request<UserData>(
+            "/users/create",
+            { email, temporary_password: temporaryPassword, permissions },
+            "POST",
+        );
+    }
+
+    static async updateUserPermissions(userId: number, permissions: Permission[]): Promise<APIUserResponse> {
+        return await this.request<UserData>("/users/update_permissions", { user_id: userId, permissions }, "POST");
+    }
+
+    static async setUserPassword(userId: number, newPassword: string): Promise<APIResponse> {
+        return await this.request("/users/set_password", { user_id: userId, new_password: newPassword }, "POST");
+    }
+
+    static async deleteUser(userId: number): Promise<APIResponse> {
+        return await this.request("/users/delete", { user_id: userId }, "POST");
+    }
+
+    static async listDevices(): Promise<APIDevicesListResponse> {
+        return await this.request<DevicesListData>("/devices/list", {}, "POST");
+    }
+
+    static async getDeviceDetails(deviceId: number): Promise<APIDeviceDetailsResponse> {
+        return await this.request<DeviceDetailsData>("/devices/details", { device_id: deviceId }, "POST");
     }
 }

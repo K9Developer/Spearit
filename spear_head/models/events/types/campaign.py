@@ -12,6 +12,7 @@ from models.events.types.event_type import EventType_
 from models.devices.device import Device
 from models.events.types.packet_event import PacketDirection, PacketEvent
 from models.logger import Logger
+from databases.db_types.events.event_db import EventDB
 from utils.campaign_utils import generate_campaign_details
 
 class CampaignStatus(Enum):
@@ -85,6 +86,7 @@ class Campaign:
             self.initial_event_time = event_time
         
         event.campaign_id = self.campaign_id
+        print(f"Added event ID {event.event_id} to campaign ID {self.campaign_id}, campaign now has {len(self.events)} events.")
 
     @staticmethod
     def from_db(campaign_db: CampaignDB) -> 'Campaign':
@@ -98,6 +100,18 @@ class Campaign:
         campaign.status = CampaignStatus(campaign_db.status) # type: ignore
         campaign.severity = CampaignSeverity(campaign_db.severity) # type: ignore
         campaign.involved_device_ids = campaign_db.involved_devices or [] # type: ignore
+
+        with SessionMaker() as session:
+            event_dbs = session.query(EventDB).filter_by(campaign_id=campaign.campaign_id).all()
+            for event_db in event_dbs:
+                if event_db.event_type == "PACKET":
+                    event = PacketEvent.from_db(event_db)
+                else:
+                    Logger.warn(f"Unknown event type '{event_db.event_type}' for event ID {event_db.event_id}, skipping.")
+                    continue
+                if event is not None:
+                    campaign.events.append(event)
+
         return campaign
 
     def to_db(self):

@@ -1,17 +1,16 @@
-import React, { useEffect, useState } from "react";
+import { useState } from "react";
 import Page from "../components/Page";
 import Box from "../components/Box";
 import Input from "../components/Input";
-import { Eye, EyeClosed, LayoutDashboardIcon } from "lucide-react";
+import { Eye, EyeClosed } from "lucide-react";
 import Button from "../components/Button";
 import { Link, useNavigate } from "react-router-dom";
 import ErrorHint from "@/components/ErrorHint";
 import { Info } from "lucide-react";
 import Logo from "@/components/Logo";
-import { API_BASE_URL } from "@/constants";
 import toast from "react-hot-toast";
 import APIManager from "@/utils/api_manager";
-import { useUser } from "@/context/User";
+import { useUser } from "@/context/useUser";
 
 const Login = () => {
     const { login } = useUser();
@@ -25,27 +24,24 @@ const Login = () => {
 
     const [isLoading, setIsLoading] = useState(false);
 
-    const handleMailChange = (email: string, onlyValid: boolean = false) => {
-        if (!email) return;
+    const onEmailChange = (next: string) => {
+        setEmail(next);
+        if (!next) {
+            setEmailError(false);
+            return;
+        }
         const emailReg = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
-        const valid = emailReg.test(email);
-        if (onlyValid && !valid) return;
-        setEmailError(!valid);
+        setEmailError(!emailReg.test(next));
     };
 
-    const handlePasswordChange = (pass: string, onlyValid: boolean = false) => {
-        if (!pass) return;
-        const valid = pass.length >= 8;
-        if (onlyValid && !valid) return;
-        setPasswordError(!valid);
+    const onPasswordChange = (next: string) => {
+        setPassword(next);
+        if (!next) {
+            setPasswordError(false);
+            return;
+        }
+        setPasswordError(next.length < 8);
     };
-
-    useEffect(() => {
-        if (!email) setEmailError(false);
-        if (!password) setPasswordError(false);
-        handleMailChange(email, false);
-        handlePasswordChange(password, false);
-    }, [email, password]);
 
     const onLogin = async () => {
         setIsLoading(true);
@@ -63,7 +59,7 @@ const Login = () => {
             <Box.Primary className="flex flex-col items-center gap-5 lg:w-[40vw] bg-background! mt-32 relative">
                 <p className="text-xl">LOGIN</p>
                 <div className="flex flex-col w-full gap-5">
-                    <Input title="Email" placeholder="e.g. example@gmail.com" className="w-full" onChange={setEmail} errored={emailError} />
+                    <Input title="Email" placeholder="e.g. example@gmail.com" className="w-full" onChange={onEmailChange} errored={emailError} />
                     <Input
                         title="Password"
                         placeholder="Enter your password"
@@ -77,7 +73,7 @@ const Login = () => {
                             )
                         }
                         onIconClick={() => setShowPassword(!showPassword)}
-                        onChange={setPassword}
+                        onChange={onPasswordChange}
                         errored={passwordError}
                     />
                     <div className="flex flex-col gap-6">

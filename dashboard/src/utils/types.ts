@@ -1,12 +1,13 @@
 export interface Event {
     event_id: number;
-    protocol: string;
+    protocol_name: string;
+    protocol_libc_name: string;
     timestamp_ns: number;
     violated_rule_id: number;
     violation_type: string;
     violation_response: string;
     is_connection_establishing: boolean;
-    direction: "inbound" | "outbound";
+    direction: "INBOUND" | "OUTBOUND";
     process: {
         process_id: number;
         name: string;
@@ -32,10 +33,10 @@ export interface Campaign {
     name: string;
     description: string;
     detailed_description: string;
-    status: "ongoing" | "completed" | "aborted";
-    severity: "low" | "medium" | "high";
-    initial_event_time: string; // ISO date string
-    last_updated: string; // ISO date string
+    status: "ONGOING" | "COMPLETED" | "ABORTED";
+    severity: "LOW" | "MEDIUM" | "HIGH";
+    initial_event_time: string;
+    last_updated: string;
     involved_device_ids: number[];
     events: Event[];
 }
@@ -45,4 +46,29 @@ export interface Notification {
     message: string;
     type: "info" | "warning" | "danger";
     created_at: string; // ISO date string
+}
+
+export interface Permission {
+    type: string;
+    affected_groups: number[];
+    affected_devices: number[];
+}
+
+export interface ManagedUser {
+    id: number;
+    fullname: string;
+    email: string;
+    permissions: Permission[];
+}
+
+export interface Device {
+    device_id: number;
+    device_name: string | null;
+    operating_system_details: string | null;
+    last_known_ip_address: string | null;
+    mac_address: string;
+    handlers: number[] | null;
+    note: string | null;
+    groups: number[];
+    last_heartbeat_id: number | null;
 }

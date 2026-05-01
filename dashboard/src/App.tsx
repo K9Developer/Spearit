@@ -1,17 +1,17 @@
 import React, { useEffect } from "react";
-import { Routes, Route } from "react-router-dom";
+import { Routes, Route, useNavigate } from "react-router-dom";
 import NotFound from "./pages/NotFound";
 import Login from "./pages/Login";
 import toast, { Toaster, useToasterStore } from "react-hot-toast";
-import APIManager from "./utils/api_manager";
-import { OrbitProgress } from "react-loading-indicators";
 import StartupNavigator from "./pages/StartupNavigator";
-import { useUser } from "./context/User";
+import { useUser } from "./context/useUser";
 import Logo from "./components/Logo";
-import { BarChart3, Home, Settings, Users } from "lucide-react";
+import { BarChart3, HardDrive, Home, LogOut, Settings, Users } from "lucide-react";
 import type { SidebarConfig } from "./components/Sidebar";
 import Sidebar from "./components/Sidebar";
 import Overview from "./pages/Overview";
+import UsersPage from "./pages/Users";
+import DevicesPage from "./pages/Devices";
 
 export function ToastLimiter({ max_toasts }: { max_toasts: number } = { max_toasts: 3 }) {
     const { toasts } = useToasterStore();
@@ -23,28 +23,44 @@ export function ToastLimiter({ max_toasts }: { max_toasts: number } = { max_toas
     return null;
 }
 
-const sidebarConfig: SidebarConfig = {
-    closable: true,
-    title: "SpearIT",
-    titleOpenIcon: <Logo showText={false} />,
-    titleCloseIcon: <Logo showText={false} />,
-    items: [
-        { title: "Home", icon: <Home size={18} />, onClick: () => {} },
-        { title: "Analytics", icon: <BarChart3 size={18} />, onClick: () => {} },
-        { title: "Users", icon: <Users size={18} />, onClick: () => {} },
-        {
-            title: "Settings",
-            icon: <Settings size={18} />,
-            onClick: () => {},
-            disabled: true,
-            disabledHint: "Settings are disabled in this sample",
-        },
-    ],
-};
-
 export default function App() {
-    const { user, isLoggedIn, login, logout } = useUser();
-    console.log(isLoggedIn);
+    const { isLoggedIn, logout } = useUser();
+    const navigate = useNavigate();
+
+    const sidebarConfig: SidebarConfig = React.useMemo(
+        () => ({
+            closable: true,
+            title: "SpearIT",
+            titleOpenIcon: <Logo showText={false} />,
+            titleCloseIcon: <Logo showText={false} />,
+            items: [
+                { title: "Home", icon: <Home size={18} />, onClick: () => navigate("/dashboard") },
+                { title: "Devices", icon: <HardDrive size={18} />, onClick: () => navigate("/dashboard/devices") },
+                { title: "Users", icon: <Users size={18} />, onClick: () => navigate("/dashboard/users") },
+                {
+                    title: "Settings",
+                    icon: <Settings size={18} />,
+                    onClick: () => {},
+                    disabled: true,
+                    disabledHint: "Settings are disabled in this sample",
+                },
+                {
+                    title: "Logout",
+                    icon: <LogOut size={18} />,
+                    onClick: () => {
+                        logout();
+                        navigate("/login");
+                    },
+                },
+            ],
+        }),
+        [navigate, logout],
+    );
+
+    if (!isLoggedIn && window.location.pathname !== "/login") {
+        return <StartupNavigator />;
+    }
+
     return (
         <div className="flex h-screen overflow-hidden">
             <Sidebar config={sidebarConfig} visible={isLoggedIn} mode="push" defaultOpen={false} />
@@ -62,13 +78,14 @@ export default function App() {
                     }}
                 />
                 <ToastLimiter max_toasts={3} />
-
                 <Routes>
                     <Route path="*" element={<NotFound />} />
                     <Route path="/" element={<StartupNavigator />} />
                     <Route path="/login" element={<Login />} />
 
                     <Route path="/dashboard" element={<Overview />} />
+                    <Route path="/dashboard/devices" element={<DevicesPage />} />
+                    <Route path="/dashboard/users" element={<UsersPage />} />
                 </Routes>
             </div>
         </div>
