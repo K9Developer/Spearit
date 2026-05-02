@@ -1,0 +1,1 @@
+cd ebpf && sudo make && cd ../scout_wrapper/ && sudo ./run.sh

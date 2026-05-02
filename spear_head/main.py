@@ -1,11 +1,5 @@
 
-import email
-import random
-
-from questionary import password
-
 from models.logger import Logger
-from models.managers.device_manager import DeviceManager
 from models.managers.user_manager import UserManager
 from models.rules.rule import Rule
 from models.users.permission import Permission
