@@ -104,7 +104,7 @@ pub mod MessageIDs {
 }
 
 // TODO: Larger values
-pub const HEARTBEAT_INTERVAL: u64 = 60; // seconds
+pub const HEARTBEAT_INTERVAL: u64 = 5; // seconds
 pub const SYSTEM_METRICS_INTERVAL: u64 = 5; // seconds
 pub const RULE_REQUEST_INTERVAL: u64 = 10; // seconds
 
@@ -116,4 +116,4 @@ pub const MAX_NETWORK_RECORD_NAME_LENGTH: usize = if MAX_PROCESS_NAME_LENGTH > 1
     18
 };
 
-pub const SERVER_IP: &str = "10.100.102.168:12345";
+pub const SERVER_IP: &str = "10.100.102.171:12345";
