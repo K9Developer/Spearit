@@ -4,17 +4,13 @@ import Input from "@/components/Input";
 import Modal from "@/components/Modal";
 import { useUser } from "@/context/useUser";
 import APIManager, { type UserManagementMetadata } from "@/utils/api_manager";
+import { hasPermission } from "@/utils/permissions";
 import type { ManagedUser, Permission } from "@/utils/types";
 import { KeyRound, Pencil, Plus, RefreshCw, Trash2, Users as UsersIcon } from "lucide-react";
 import React from "react";
 import toast from "react-hot-toast";
 import PermissionEditor from "./users/PermissionEditor";
 import SimpleTable from "./users/SimpleTable";
-
-const hasPermission = (permissions: Permission[], type: string) => {
-    if (permissions.some((p) => p.type === "root")) return true;
-    return permissions.some((p) => p.type === type);
-};
 
 const summarizePermissions = (permissions: Permission[]) => {
     if (permissions.length === 0) return "—";
@@ -320,6 +316,7 @@ export default function Users() {
                                     permissionTypes={metadata?.permission_types ?? {}}
                                     groupIds={metadata?.group_ids ?? {}}
                                     deviceIds={metadata?.device_ids ?? {}}
+                                    handlerIds={metadata?.handler_ids ?? {}}
                                     canAssignType={canGrantType}
                                     lockedTypes={new Set<string>()}
                                     value={createPermissions}
@@ -357,6 +354,7 @@ export default function Users() {
                                         permissionTypes={metadata?.permission_types ?? {}}
                                         groupIds={metadata?.group_ids ?? {}}
                                         deviceIds={metadata?.device_ids ?? {}}
+                                        handlerIds={metadata?.handler_ids ?? {}}
                                         canAssignType={canGrantType}
                                         lockedTypes={
                                             user && selectedUser.id === user.id

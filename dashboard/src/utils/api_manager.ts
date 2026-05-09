@@ -67,6 +67,7 @@ export type UserManagementMetadata = {
     permission_types: Record<string, string>;
     group_ids: Record<string, string>;
     device_ids: Record<string, string>;
+    handler_ids?: Record<string, string>;
 };
 
 export type APIUserManagementMetadataResponse = APIResponse<UserManagementMetadata>;
@@ -90,6 +91,22 @@ export type DeviceDetailsData = {
 };
 
 export type APIDeviceDetailsResponse = APIResponse<DeviceDetailsData>;
+
+export type UpdateDeviceData = {
+    device: Device;
+};
+
+export type APIUpdateDeviceResponse = APIResponse<UpdateDeviceData>;
+
+export type DeviceCommunicationMapData = {
+    connections: {
+        from_device_id: number;
+        to_device_id: number;
+        count?: number;
+    }[];
+};
+
+export type APIDeviceCommunicationMapResponse = APIResponse<DeviceCommunicationMapData>;
 
 export type UserData = {
     user: ManagedUser;
@@ -215,5 +232,20 @@ export default class APIManager {
 
     static async getDeviceDetails(deviceId: number): Promise<APIDeviceDetailsResponse> {
         return await this.request<DeviceDetailsData>("/devices/details", { device_id: deviceId }, "POST");
+    }
+
+    static async updateDevice(deviceId: number, update: { device_name?: string | null; groups?: number[]; handlers?: number[] | null }): Promise<APIUpdateDeviceResponse> {
+        return await this.request<UpdateDeviceData>(
+            "/devices/update",
+            {
+                device_id: deviceId,
+                ...update,
+            },
+            "POST",
+        );
+    }
+
+    static async getDeviceCommunicationMap(): Promise<APIDeviceCommunicationMapResponse> {
+        return await this.request<DeviceCommunicationMapData>("/devices/communication_map", {}, "POST");
     }
 }

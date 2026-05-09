@@ -52,6 +52,7 @@ export interface Permission {
     type: string;
     affected_groups: number[];
     affected_devices: number[];
+    affected_handlers?: number[];
 }
 
 export interface ManagedUser {

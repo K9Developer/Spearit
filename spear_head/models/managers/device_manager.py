@@ -187,3 +187,15 @@ class DeviceManager:
                     device_db = session.query(DeviceDB).filter_by(device_id=device_id).first()
                     if device_db is not None:
                         yield Device.from_db(device_db)
+
+    @staticmethod
+    def update_device(device_id: int, device_name: str, groups: list[int], handlers: list[int]) -> bool:
+        with SessionMaker() as session:
+            device_db = session.query(DeviceDB).filter_by(device_id=device_id).first()
+            if device_db is None:
+                return False
+            device_db.name = device_name
+            device_db.groups = groups # type: ignore
+            device_db.handlers = handlers # type: ignore
+            session.commit()
+            return True

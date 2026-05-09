@@ -1,4 +1,5 @@
 import React from "react";
+import Input from "@/components/Input";
 
 interface Props {
     title: string;
@@ -10,6 +11,7 @@ interface Props {
 
 export default function IdMultiSelect({ title, items, selected, onChange, emptyText = "None" }: Props) {
     const [open, setOpen] = React.useState(false);
+    const [query, setQuery] = React.useState("");
     const rootRef = React.useRef<HTMLDivElement | null>(null);
 
     const options = React.useMemo(() => {
@@ -22,6 +24,12 @@ export default function IdMultiSelect({ title, items, selected, onChange, emptyT
     }, [items]);
 
     const selectedSet = React.useMemo(() => new Set(selected), [selected]);
+
+    const filteredOptions = React.useMemo(() => {
+        const q = query.trim().toLowerCase();
+        if (!q) return options;
+        return options.filter((o) => o.name.toLowerCase().includes(q) || String(o.id).includes(q));
+    }, [options, query]);
 
     const toggle = (id: number) => {
         if (selectedSet.has(id)) onChange(selected.filter((x) => x !== id));
@@ -50,6 +58,10 @@ export default function IdMultiSelect({ title, items, selected, onChange, emptyT
         return () => window.removeEventListener("pointerdown", onPointerDown);
     }, [open]);
 
+    React.useEffect(() => {
+        if (!open) setQuery("");
+    }, [open]);
+
     return (
         <div ref={rootRef} className="w-full relative">
             <p className="text-xs uppercase tracking-wide text-text-gray">{title}</p>
@@ -68,8 +80,13 @@ export default function IdMultiSelect({ title, items, selected, onChange, emptyT
 
                     {open && (
                         <div className="absolute z-50 mt-2 w-full rounded-md outline outline-secondary bg-foreground shadow-xl overflow-hidden">
+                            <div className="p-2 border-b border-secondary">
+                                <Input placeholder="Search…" value={query} onChange={setQuery} />
+                            </div>
                             <div className="max-h-60 overflow-y-auto p-2">
-                                {options.map((opt) => {
+                                {filteredOptions.length === 0 && <p className="px-3 py-2 text-sm text-text-secondary">No matches</p>}
+
+                                {filteredOptions.map((opt) => {
                                     const isSelected = selectedSet.has(opt.id);
                                     return (
                                         <button

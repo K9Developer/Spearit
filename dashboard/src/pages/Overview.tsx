@@ -189,7 +189,9 @@ export default function Overview() {
                                         <div className="flex items-center justify-between gap-4">
                                             <p className="text-sm text-text-gray">Last Heartbeat</p>
                                             <p className="text-sm font-medium text-text-primary">
-                                                {formatMaybeSeconds(data.system_health.last_heartbeat_age)}
+                                                {data.system_health.last_heartbeat_age
+                                                    ? "N/A"
+                                                    : formatMaybeSeconds(data.system_health.last_heartbeat_age)}
                                             </p>
                                         </div>
                                     </div>

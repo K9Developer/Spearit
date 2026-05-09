@@ -19,7 +19,7 @@ class InternalHeartbeatManager:
 
         raw_network_details = heartbeat_data.get("network_details", {})
         network_details = HeartbeatNetworkDetails(
-            contacted_macs=raw_network_details.get("contacted_macs", {})
+            contacted_devices=raw_network_details.get("contacted_macs", {})
         )
 
         raw_sys_metrics = heartbeat_data.get("system_metrics", {})
@@ -51,7 +51,7 @@ class InternalHeartbeatManager:
         device_id = DeviceManager.submit_device_info(hb.device_info)
         
         # create device entries for contacted devices if they don't exist
-        for mac in hb.network_details.contacted_macs:
+        for mac in hb.network_details.contacted_devices:
             if mac == "00:00:00:00:00:00" or not is_valid_mac(mac):
                 Logger.warn(f"Contacted MAC address is invalid ({mac}); skipping device info submission.")
                 continue

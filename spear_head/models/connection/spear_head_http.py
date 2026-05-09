@@ -212,8 +212,7 @@ def overview(
     last_hb_time = HeartbeatManager.get_last_heartbeat_time()
     if last_hb_time is not None and last_hb_time.tzinfo is None:
         last_hb_time = last_hb_time.replace(tzinfo=timezone.utc)
-    print(last_hb_time)
-    data["system_health"]["last_heartbeat_age"] = last_hb_time.timestamp() * 1000 if last_hb_time else -1 # type: ignore
+        data["system_health"]["last_heartbeat_age"] = last_hb_time.timestamp() * 1000 if last_hb_time else -1 # type: ignore
     total_device_count = DeviceManager.get_device_count()
     data["system_health"]["wrappers_connected_precentage"] = PUBLIC_SPEAR_HEAD_DATA.wrappers_connected / total_device_count * 100 if total_device_count > 0 else 0 # type: ignore
 
@@ -385,6 +384,55 @@ def device_details(
     }
     
     return HTTPResponse.ok(response, "Device details retrieved successfully", data)
+
+@app.post("/devices/update")
+def update_device(
+        response: Response,
+        token: str = Body(..., embed=True) ,
+        device_id: int = Body(...),
+        device_name: str = Body(...),
+        groups: list[int] = Body(...),
+        handlers: list[int] = Body(...)
+    ):
+    if (res := check_user_permission(token, UserAction.CONTROL_DEVICES, ActionTarget.device(device_id))) != UserPermissionResponse.ALLOWED:
+        return permission_error_to_http_response(res, response)
+    
+    device = DeviceManager.get_device_by_id(device_id)
+    if device is None:
+        return HTTPResponse.error(response, "Device not found")
+    if not DeviceManager.update_device(device_id, device_name, groups, handlers):
+        return HTTPResponse.error(response, "Failed to update device")
+    return HTTPResponse.ok(response, "Device updated successfully")
+
+@app.post("/devices/communication_map")
+def device_communication_map(
+        response: Response,
+        token: str = Body(..., embed=True)
+        ):
+    usr, succ = verify_token_validity(token)
+    if not succ or usr is None or usr.user_id is None:
+        Logger.warn(f"Communication map access with invalid/expired token: {token}")
+        return HTTPResponse.token_error(response)
+
+    devices_under_user = list(DeviceManager.get_devices_by_handler(usr.user_id))
+    device_ids_under_user = set(d.device_id for d in devices_under_user if d.device_id is not None) # type: ignore
+    tmp_communication_map: dict[int, tuple[int, int]] = {} # src -> (dst, count)
+    for device in devices_under_user:
+        if device.device_id is None: continue
+        heartbeats = HeartbeatManager.get_heartbeats_for_device(device.device_id)
+        for hb in heartbeats:
+            contacted_devices = hb.network_details.get_contacted_devices()
+            for contacted_device_id, count in contacted_devices.items():
+                if contacted_device_id in device_ids_under_user:
+                    key = (device.device_id, contacted_device_id) # type: ignore
+                    if key not in tmp_communication_map:
+                        tmp_communication_map[key] = (device.device_id, contacted_device_id, count) # type: ignore
+                    else:
+                        existing = tmp_communication_map[key]
+                        tmp_communication_map[key] = (existing[0], existing[1], existing[2] + count) # type: ignore
+    communication_map = [{"from_device_id": v[0], "to_device_id": v[1], "count": v[2]} for v in tmp_communication_map.values()] # type: ignore
+
+    return HTTPResponse.ok(response, "Device communication map retrieved successfully", {"connections": communication_map})
 
 @app.get("/ping")
 def ping():

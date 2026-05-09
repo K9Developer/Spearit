@@ -17,7 +17,7 @@ class Heartbeat:
     @staticmethod
     def from_db(heartbeat_db: HeartbeatDB) -> "Heartbeat":
         network_details = HeartbeatNetworkDetails(
-            contacted_macs=heartbeat_db.contacted_devices or {} # type: ignore
+            contacted_devices=heartbeat_db.contacted_devices or {} # type: ignore
         )
 
         sys_metrics = heartbeat_db.system_metrics or {}

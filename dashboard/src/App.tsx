@@ -6,12 +6,13 @@ import toast, { Toaster, useToasterStore } from "react-hot-toast";
 import StartupNavigator from "./pages/StartupNavigator";
 import { useUser } from "./context/useUser";
 import Logo from "./components/Logo";
-import { BarChart3, HardDrive, Home, LogOut, Settings, Users } from "lucide-react";
+import { HardDrive, Home, LogOut, Settings, Users } from "lucide-react";
 import type { SidebarConfig } from "./components/Sidebar";
 import Sidebar from "./components/Sidebar";
 import Overview from "./pages/Overview";
 import UsersPage from "./pages/Users";
 import DevicesPage from "./pages/Devices";
+import DeviceMappingPage from "./pages/DeviceMapping";
 
 export function ToastLimiter({ max_toasts }: { max_toasts: number } = { max_toasts: 3 }) {
     const { toasts } = useToasterStore();
@@ -85,6 +86,7 @@ export default function App() {
 
                     <Route path="/dashboard" element={<Overview />} />
                     <Route path="/dashboard/devices" element={<DevicesPage />} />
+                    <Route path="/dashboard/devices/map" element={<DeviceMappingPage />} />
                     <Route path="/dashboard/users" element={<UsersPage />} />
                 </Routes>
             </div>

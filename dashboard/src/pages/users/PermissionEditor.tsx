@@ -8,6 +8,7 @@ interface Props {
     permissionTypes: Record<string, string>;
     groupIds: Record<string, string>;
     deviceIds: Record<string, string>;
+    handlerIds?: Record<string, string>;
     canAssignType: (type: string) => boolean;
     lockedTypes: Set<string>;
     value: Permission[];
@@ -25,7 +26,7 @@ const emptyPermission = (permissionTypes: Record<string, string>, canAssignType:
     };
 };
 
-export default function PermissionEditor({ permissionTypes, groupIds, deviceIds, canAssignType, lockedTypes, value, onChange }: Props) {
+export default function PermissionEditor({ permissionTypes, groupIds, deviceIds, handlerIds, canAssignType, lockedTypes, value, onChange }: Props) {
     const permissionTypeKeys = React.useMemo(() => Object.keys(permissionTypes), [permissionTypes]);
 
     const isTypeLocked = React.useCallback((perm: Permission) => lockedTypes.has(perm.type), [lockedTypes]);
@@ -117,6 +118,18 @@ export default function PermissionEditor({ permissionTypes, groupIds, deviceIds,
                             emptyText="No devices available"
                         />
                     </div>
+
+                    {handlerIds && Object.keys(handlerIds).length > 0 && (
+                        <div className="mt-4">
+                            <IdMultiSelect
+                                title="Affected Handlers"
+                                items={handlerIds}
+                                selected={perm.affected_handlers ?? []}
+                                onChange={(next) => updateAt(idx, { ...perm, affected_handlers: next })}
+                                emptyText="No handlers available"
+                            />
+                        </div>
+                    )}
                 </div>
             ))}
 

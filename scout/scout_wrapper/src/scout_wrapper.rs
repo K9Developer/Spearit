@@ -123,7 +123,7 @@ impl ScoutWrapper {
         let mut child = match Command::new("sudo")
             .arg("stdbuf")
             .arg("-oL")
-            .arg("-eL") // THIS IS THE KEY
+            .arg("-eL")
             .arg(ebpf_path)
             .current_dir(ebpf_path.parent().unwrap())
             .stdout(Stdio::piped())
