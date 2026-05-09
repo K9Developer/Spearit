@@ -7,9 +7,10 @@ interface Props {
     selected: number[];
     onChange: (next: number[]) => void;
     emptyText?: string;
+    disabled?: boolean;
 }
 
-export default function IdMultiSelect({ title, items, selected, onChange, emptyText = "None" }: Props) {
+export default function IdMultiSelect({ title, items, selected, onChange, emptyText = "None", disabled = false }: Props) {
     const [open, setOpen] = React.useState(false);
     const [query, setQuery] = React.useState("");
     const rootRef = React.useRef<HTMLDivElement | null>(null);
@@ -32,6 +33,7 @@ export default function IdMultiSelect({ title, items, selected, onChange, emptyT
     }, [options, query]);
 
     const toggle = (id: number) => {
+        if (disabled) return;
         if (selectedSet.has(id)) onChange(selected.filter((x) => x !== id));
         else onChange([...selected, id]);
     };
@@ -71,8 +73,13 @@ export default function IdMultiSelect({ title, items, selected, onChange, emptyT
                 <>
                     <button
                         type="button"
-                        onClick={() => setOpen((v) => !v)}
-                        className="mt-2 w-full bg-foreground outline outline-secondary rounded-md px-3 py-2 text-sm text-text-primary flex items-center justify-between gap-3 hover:brightness-90 transition"
+                        onClick={() => {
+                            if (!disabled) setOpen((v) => !v);
+                        }}
+                        disabled={disabled}
+                        className={`mt-2 w-full bg-foreground outline outline-secondary rounded-md px-3 py-2 text-sm text-text-primary flex items-center justify-between gap-3 transition ${
+                            disabled ? "opacity-70 cursor-not-allowed" : "hover:brightness-90"
+                        }`}
                     >
                         <span className="min-w-0 truncate text-left">{summary}</span>
                         <span className="text-xs text-text-gray shrink-0">▾</span>
@@ -81,7 +88,7 @@ export default function IdMultiSelect({ title, items, selected, onChange, emptyT
                     {open && (
                         <div className="absolute z-50 mt-2 w-full rounded-md outline outline-secondary bg-foreground shadow-xl overflow-hidden">
                             <div className="p-2 border-b border-secondary">
-                                <Input placeholder="Search…" value={query} onChange={setQuery} />
+                                <Input placeholder="Search…" value={query} onChange={setQuery} disabled={disabled} />
                             </div>
                             <div className="max-h-60 overflow-y-auto p-2">
                                 {filteredOptions.length === 0 && <p className="px-3 py-2 text-sm text-text-secondary">No matches</p>}
@@ -93,9 +100,10 @@ export default function IdMultiSelect({ title, items, selected, onChange, emptyT
                                             key={opt.id}
                                             type="button"
                                             onClick={() => toggle(opt.id)}
+                                            disabled={disabled}
                                             className={`w-full flex items-center gap-3 px-3 py-2 rounded-md transition text-left ${
                                                 isSelected ? "bg-background/60" : "hover:bg-background/40"
-                                            }`}
+                                            } ${disabled ? "opacity-70 cursor-not-allowed hover:bg-transparent" : ""}`}
                                         >
                                             <span
                                                 className={`h-4 w-4 rounded-sm outline outline-secondary flex items-center justify-center shrink-0 ${
@@ -112,7 +120,14 @@ export default function IdMultiSelect({ title, items, selected, onChange, emptyT
                             </div>
                             <div className="border-t border-secondary px-3 py-2 flex items-center justify-between">
                                 <p className="text-xs text-text-gray">{selected.length} selected</p>
-                                <button type="button" onClick={() => onChange([])} className="text-xs text-highlight hover:brightness-90 transition">
+                                <button
+                                    type="button"
+                                    disabled={disabled}
+                                    onClick={() => {
+                                        if (!disabled) onChange([]);
+                                    }}
+                                    className={`text-xs text-highlight transition ${disabled ? "opacity-60 cursor-not-allowed" : "hover:brightness-90"}`}
+                                >
                                     Clear
                                 </button>
                             </div>

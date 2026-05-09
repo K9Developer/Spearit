@@ -6,6 +6,7 @@ class UserAction(Enum):
     CONTROL_USERS = "control_users"
     CONTROL_GROUPS = "control_groups"
     CONTROL_DEVICES = "control_devices"
+    CONTROL_RULES = "control_rules"
 
 class ActionTargetType(Enum):
     NONE = -1
@@ -56,4 +57,5 @@ def get_description_permissions() -> dict[str, str]:
         UserAction.CONTROL_USERS.value: "Permission to create, edit, and delete users.",
         UserAction.CONTROL_GROUPS.value: "Permission to create, edit, and delete groups.",
         UserAction.CONTROL_DEVICES.value: "Permission to control devices and groups.",
+        UserAction.CONTROL_RULES.value: "Permission to create, edit, and delete rules.",
     }

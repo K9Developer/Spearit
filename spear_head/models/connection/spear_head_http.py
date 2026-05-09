@@ -5,7 +5,7 @@ from typing import Any, Dict
 from fastapi import Body, FastAPI, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 import uvicorn
-from sqlalchemy import text
+from sqlalchemy import text, func
 from models.events.types.event import EventKind
 from constants.constants import TOKEN_VALIDITY_DURATION_HOURS, SPEAR_HEAD_API_PORT
 from databases.engine import SessionMaker
@@ -17,6 +17,8 @@ from models.managers.event_manager import EventManager
 from models.managers.heartbeat_manager import HeartbeatManager
 from models.managers.notification_manager import NotificationManager
 from models.managers.user_manager import UserManager
+from models.managers.rule_manager import RuleManager
+from databases.db_types.rules.rule_db import RuleDB
 from spear_head import PUBLIC_SPEAR_HEAD_DATA
 from models.managers.group_manager import GroupManager
 from models.users.permission import get_description_permissions
@@ -207,7 +209,7 @@ def overview(
             text("SELECT rule_id, rule_name, last_updated FROM rules WHERE last_updated >= :time"),
             {"time": datetime.now(timezone.utc) - timedelta(hours=48)}
         ).fetchall()
-        data["recently_changed_rules"] = [{"rule_id": r[0], "name": r[1], "last_updated": r[2].isoformat()} for r in recent_rules] # type: ignore
+        data["recently_changed_rules"] = [{"rule_id": r[0], "rule_name": r[1], "last_updated": r[2]} for r in recent_rules] # type: ignore
     
     last_hb_time = HeartbeatManager.get_last_heartbeat_time()
     if last_hb_time is not None and last_hb_time.tzinfo is None:
@@ -219,6 +221,161 @@ def overview(
     data["rule_violations_ph"] = len(list(EventManager.get_events_date_range(datetime.now(timezone.utc) - timedelta(hours=1), datetime.now(timezone.utc)))) # type: ignore
 
     return HTTPResponse.ok(response, "Overview data retrieved successfully", data)
+
+
+@app.post("/rules/list")
+def list_rules(
+        response: Response,
+        token: str = Body(..., embed=True)
+    ):
+    usr, succ = verify_token_validity(token)
+    if not succ or usr is None or usr.user_id is None:
+        return HTTPResponse.token_error(response)
+
+    rules = [r.to_json() for r in RuleManager.get_all_rules()]
+    rules.sort(key=lambda x: int(x.get("rule_order", 0)))
+    return HTTPResponse.ok(response, "Rules listed successfully", {"rules": rules})
+
+
+@app.post("/rules/create")
+def create_rule(
+        response: Response,
+        token: str = Body(..., embed=True),
+        rule_name: str = Body(...),
+        event_types: list[str] = Body(...),
+        conditions: list[dict[str, Any]] = Body(...),
+        responses: list[str] = Body(...),
+        active_for_groups: list[int] | None = Body(None),
+        is_active: bool = Body(True),
+        priority: int = Body(0),
+        handlers: list[int] | None = Body(None),
+        description: str = Body(""),
+        rule_order: int | None = Body(None),
+    ):
+    if (res := check_user_permission(token, UserAction.CONTROL_RULES, ActionTarget.none())) != UserPermissionResponse.ALLOWED:
+        return permission_error_to_http_response(res, response)
+
+    usr, succ = verify_token_validity(token)
+    if not succ or usr is None or usr.user_id is None:
+        return HTTPResponse.token_error(response)
+
+    # tmp
+    rule_type = "packet"
+
+    with SessionMaker() as session:
+        if rule_order is None:
+            max_order = session.query(func.max(RuleDB.rule_order)).scalar()
+            rule_order = int(max_order) + 1 if max_order is not None else 0
+
+        rule_db = RuleDB(
+            rule_order=rule_order,
+            rule_type=rule_type,
+            event_types=event_types,
+            conditions=conditions,
+            responses=responses,
+            active_for_groups=active_for_groups,
+            is_active=is_active,
+            author_id=usr.user_id,
+            rule_name=rule_name,
+            priority=priority,
+            handlers=handlers,
+            description=description,
+        )
+        session.add(rule_db)
+        session.commit()
+        session.refresh(rule_db)
+
+        created = RuleManager.get_rule_by_id(int(rule_db.rule_id)) # type: ignore
+        if created is None:
+            return HTTPResponse.error(response, "Failed to create rule")
+        return HTTPResponse.ok(response, "Rule created successfully", {"rule": created.to_json()})
+
+
+@app.post("/rules/update")
+def update_rule(
+        response: Response,
+        token: str = Body(..., embed=True),
+        rule_id: int = Body(...),
+        rule_name: str | None = Body(None),
+        event_types: list[str] | None = Body(None),
+        conditions: list[dict[str, Any]] | None = Body(None),
+        responses: list[str] | None = Body(None),
+        active_for_groups: list[int] | None = Body(None),
+        is_active: bool | None = Body(None),
+        priority: int | None = Body(None),
+        handlers: list[int] | None = Body(None),
+        description: str | None = Body(None),
+        rule_order: int | None = Body(None),
+    ):
+    if (res := check_user_permission(token, UserAction.CONTROL_RULES, ActionTarget.none())) != UserPermissionResponse.ALLOWED:
+        return permission_error_to_http_response(res, response)
+
+    with SessionMaker() as session:
+        rule_db = session.get(RuleDB, rule_id)
+        if rule_db is None:
+            return HTTPResponse.error(response, "Rule not found")
+
+        if rule_name is not None:
+            rule_db.rule_name = rule_name # type: ignore
+        if event_types is not None:
+            rule_db.event_types = event_types # type: ignore
+        if conditions is not None:
+            rule_db.conditions = conditions # type: ignore
+        if responses is not None:
+            rule_db.responses = responses # type: ignore
+        if active_for_groups is not None:
+            rule_db.active_for_groups = active_for_groups # type: ignore
+        if is_active is not None:
+            rule_db.is_active = is_active # type: ignore
+        if priority is not None:
+            rule_db.priority = priority # type: ignore
+        if handlers is not None:
+            rule_db.handlers = handlers # type: ignore
+        if description is not None:
+            rule_db.description = description # type: ignore
+        if rule_order is not None:
+            rule_db.rule_order = rule_order # type: ignore
+
+        session.commit()
+
+        updated = RuleManager.get_rule_by_id(rule_id)
+        if updated is None:
+            return HTTPResponse.error(response, "Failed to update rule")
+        return HTTPResponse.ok(response, "Rule updated successfully", {"rule": updated.to_json()})
+
+
+@app.post("/rules/delete")
+def delete_rule(
+        response: Response,
+        token: str = Body(..., embed=True),
+        rule_id: int = Body(...)
+    ):
+    if (res := check_user_permission(token, UserAction.CONTROL_RULES, ActionTarget.none())) != UserPermissionResponse.ALLOWED:
+        return permission_error_to_http_response(res, response)
+
+    if not RuleManager.delete_rule_by_id(rule_id):
+        return HTTPResponse.error(response, "Failed to delete rule")
+    return HTTPResponse.ok(response, "Rule deleted successfully")
+
+
+@app.post("/rules/reorder")
+def reorder_rules(
+        response: Response,
+        token: str = Body(..., embed=True),
+        rule_ids: list[int] = Body(...)
+    ):
+    if (res := check_user_permission(token, UserAction.CONTROL_RULES, ActionTarget.none())) != UserPermissionResponse.ALLOWED:
+        return permission_error_to_http_response(res, response)
+
+    with SessionMaker() as session:
+        for idx, rule_id in enumerate(rule_ids):
+            rule_db = session.get(RuleDB, rule_id)
+            if rule_db is None:
+                continue
+            rule_db.rule_order = idx # type: ignore
+        session.commit()
+
+    return HTTPResponse.ok(response, "Rules reordered successfully")
 
 @app.post("/users/metadata")
 def get_user_metadata(

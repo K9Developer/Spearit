@@ -1,6 +1,6 @@
 import { API_BASE_URL } from "@/constants";
 import { type User } from "@/context/userTypes";
-import type { Campaign, Device, Event, ManagedUser, Notification, Permission } from "./types";
+import type { Campaign, Device, Event, ManagedUser, Notification, Permission, Rule } from "./types";
 
 export interface APIResponse<TData = unknown> {
     success: boolean;
@@ -113,6 +113,18 @@ export type UserData = {
 };
 
 export type APIUserResponse = APIResponse<UserData>;
+
+export type RulesListData = {
+    rules: Rule[];
+};
+
+export type APIRulesListResponse = APIResponse<RulesListData>;
+
+export type RuleData = {
+    rule: Rule;
+};
+
+export type APIRuleResponse = APIResponse<RuleData>;
 
 type LoginResponse = APIResponse<{
     token: string;
@@ -247,5 +259,51 @@ export default class APIManager {
 
     static async getDeviceCommunicationMap(): Promise<APIDeviceCommunicationMapResponse> {
         return await this.request<DeviceCommunicationMapData>("/devices/communication_map", {}, "POST");
+    }
+
+    static async listRules(): Promise<APIRulesListResponse> {
+        return await this.request<RulesListData>("/rules/list", {}, "POST");
+    }
+
+    static async createRule(rule: {
+        rule_name: string;
+        event_types: string[];
+        conditions: unknown[];
+        responses: string[];
+        active_for_groups?: number[] | null;
+        is_active?: boolean;
+        priority?: number;
+        handlers?: number[] | null;
+        description?: string;
+        rule_order?: number;
+    }): Promise<APIRuleResponse> {
+        return await this.request<RuleData>("/rules/create", rule as unknown as Record<string, unknown>, "POST");
+    }
+
+    static async updateRule(rule_id: number, update: {
+        rule_name?: string;
+        event_types?: string[];
+        conditions?: unknown[];
+        responses?: string[];
+        active_for_groups?: number[] | null;
+        is_active?: boolean;
+        priority?: number;
+        handlers?: number[] | null;
+        description?: string | null;
+        rule_order?: number;
+    }): Promise<APIRuleResponse> {
+        return await this.request<RuleData>(
+            "/rules/update",
+            { rule_id, ...update } as unknown as Record<string, unknown>,
+            "POST",
+        );
+    }
+
+    static async deleteRule(rule_id: number): Promise<APIResponse> {
+        return await this.request("/rules/delete", { rule_id }, "POST");
+    }
+
+    static async reorderRules(rule_ids: number[]): Promise<APIResponse> {
+        return await this.request("/rules/reorder", { rule_ids }, "POST");
     }
 }

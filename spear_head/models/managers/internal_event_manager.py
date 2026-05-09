@@ -7,6 +7,7 @@ from models.managers.campaign_manager import CampaignManager
 from models.events.types.event import EventKind, ViolationResponse
 from models.events.types.packet_event import PacketDeviceInfo, PacketDirection, PacketEvent, PacketPayload, ProcessInfo
 from models.events.types.event_type import EventType_
+from models.managers.notification_manager import NotificationManager
 from utils.parser_utils import protocol_entry_from_id
 
 
@@ -16,6 +17,8 @@ class InternalEventManager:
 
     @staticmethod
     def _submit_packet_event(json_event: dict[str, str | dict[str, str]]):
+
+        
         packet_event = PacketEvent(
             timestamp_ns=json_event["timestamp_ns"], 
             violated_rule_id=json_event["violated_rule_id"],
@@ -48,7 +51,15 @@ class InternalEventManager:
             )
         )
         InternalEventManager.event_queue.put(packet_event)
-        DeviceManager._update_device_from_packet_event(packet_event)
+        d1, d2 = DeviceManager._update_device_from_packet_event(packet_event)
+        users = DeviceManager.get_handlers_for_device(d1)
+        users.extend(DeviceManager.get_handlers_for_device(d2))
+
+        NotificationManager.create_notification(
+             f"Packet rule violation detected (Rule ID: {json_event.get('violated_rule_id', 'Unknown')})",
+            users,
+            link=f"/events/{packet_event.event_id}"
+        )
 
     @staticmethod
     def _process_event():

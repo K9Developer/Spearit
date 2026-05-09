@@ -41,16 +41,17 @@ class DeviceManager:
                 return existing_device.device_id  # type: ignore
     
     @staticmethod
-    def _update_device_from_packet_event(event: PacketEvent):
+    def _update_device_from_packet_event(event: PacketEvent) -> tuple[int, int]:
         hdi1 = HeartbeatDeviceInformation.default()
         hdi1.mac_address = event.source.mac
         hdi1.ip_address = event.source.ip or "0.0.0.0"
-        DeviceManager.submit_device_info(hdi1)
+        device_id1 = DeviceManager.submit_device_info(hdi1)
 
         hdi2 = HeartbeatDeviceInformation.default()
         hdi2.mac_address = event.dest.mac
         hdi2.ip_address = event.dest.ip or "0.0.0.0"
-        DeviceManager.submit_device_info(hdi2)
+        device_id2 = DeviceManager.submit_device_info(hdi2)
+        return device_id1, device_id2
 
     @staticmethod
     def _create_device(mac_address: str) -> Device:
@@ -151,6 +152,20 @@ class DeviceManager:
                 session.commit()
             return True
     
+    @staticmethod
+    def get_handlers_for_device(device_id: int) -> list[int]:
+        with SessionMaker() as session:
+            device_db = session.query(DeviceDB).filter_by(device_id=device_id).first()
+            if device_db is None:
+                return []
+            users = list(device_db.handlers or [])
+            groups = device_db.groups or []
+            for group_id in groups:
+                group_db = session.query(GroupDB).filter_by(group_id=group_id).first()
+                if group_db is not None:
+                    users.extend(group_db.handlers or [])
+            return list(set(users))
+
     @staticmethod
     def add_device_handler(device_id: int, user_id: int) -> bool:
         with SessionMaker() as session:

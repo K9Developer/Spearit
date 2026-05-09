@@ -148,14 +148,14 @@ class PacketEvent(BaseEvent):
     @staticmethod
     def from_db(event_db: EventDB) -> 'PacketEvent':
         event_data = event_db.event_data # TODO: Check if this works
-        print(event_data)
         packet_event = PacketEvent(
             timestamp_ns=int(event_db.timestamp.timestamp() * 1_000_000_000),
             violated_rule_id=event_db.rule_id, # type: ignore
             violation_type=ViolationType(event_data.get("violation_type", "packet")), # type: ignore
             violation_response=ViolationResponse.from_str(event_data.get("violation_response", "NONE")),
             protocol=ProtocolInfoEntry(
-                name=event_data["protocol_name"] # type: ignore
+                name=event_data["protocol_name"], # type: ignore
+                libc_name=event_data["protocol_libc_name"] # type: ignore
             ),
             is_connection_establishing=event_data["is_connection_establishing"], # type: ignore
             direction=PacketDirection.from_str(event_data["direction"]), # type: ignore

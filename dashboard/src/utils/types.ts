@@ -73,3 +73,59 @@ export interface Device {
     groups: number[];
     last_heartbeat_id: number | null;
 }
+
+export type RuleConditionKey =
+    | "packet.length"
+    | "packet.src_ip"
+    | "packet.dst_ip"
+    | "packet.src_port"
+    | "packet.dst_port"
+    | "packet.protocol"
+    | "packet.is_connection_establishing";
+
+export type RuleConditionOperator =
+    | "equals"
+    | "not_equals"
+    | "lower_than"
+    | "greater_than"
+    | "lower_than_or_equal"
+    | "greater_than_or_equal"
+    | "contains";
+
+export type RuleEventType =
+    | "network.send_packet"
+    | "network.receive_packet"
+    | "network.receive_connection"
+    | "network.create_connection";
+
+export type RuleConditionOperand = {
+    is_key: boolean;
+    value: string;
+};
+
+export type RuleCondition = {
+    key: {
+        is_key: true;
+        value: RuleConditionKey;
+    };
+    operator: RuleConditionOperator;
+    value: RuleConditionOperand;
+};
+
+export type Rule = {
+    rule_id: number;
+    rule_order: number;
+    rule_type: string;
+    event_types: RuleEventType[];
+    conditions: RuleCondition[];
+    responses: string[];
+    active_for_groups: number[] | null;
+    is_active: boolean;
+    author_id: number | null;
+    rule_name: string;
+    created_at: string;
+    last_updated?: string | null;
+    priority: number;
+    handlers: number[] | null;
+    description: string | null;
+};
