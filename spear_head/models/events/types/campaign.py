@@ -86,7 +86,7 @@ class Campaign:
             self.initial_event_time = event_time
         
         event.campaign_id = self.campaign_id
-        print(f"Added event ID {event.event_id} to campaign ID {self.campaign_id}, campaign now has {len(self.events)} events.")
+        event.update_db()
 
     @staticmethod
     def from_db(campaign_db: CampaignDB) -> 'Campaign':

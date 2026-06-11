@@ -7,6 +7,9 @@ import { Activity, AlertTriangle, Cpu, RefreshCw, ShieldAlert, Siren, Users } fr
 import StatCard from "./overview/StatCard";
 import SectionCard from "./overview/SectionCard";
 import SimpleTable from "./overview/SimpleTable";
+import { useNavigate } from "react-router-dom";
+
+type CampaignRow = OverviewData["active_campaigns"][number];
 
 const formatMaybePercent = (value: number) => {
     if (value < 0) return "—";
@@ -30,6 +33,7 @@ const formatIso = (iso: string) => {
 };
 
 export default function Overview() {
+    const navigate = useNavigate();
     const [data, setData] = React.useState<OverviewData | null>(null);
     const [loading, setLoading] = React.useState(true);
     const [error, setError] = React.useState<string | null>(null);
@@ -103,6 +107,7 @@ export default function Overview() {
                                     <SimpleTable
                                         emptyText="No active campaigns"
                                         rows={data.active_campaigns}
+                                        onRowClick={(campaign: CampaignRow) => navigate(`/dashboard/campaigns?campaign_id=${campaign.campaign_id}`)}
                                         columns={[
                                             {
                                                 key: "name",

@@ -1,8 +1,14 @@
 export interface Event {
     event_id: number;
+    event_type?: string | null;
+    device_id?: number | null;
+    device_name?: string | null;
+    campaign_id?: number | null;
+    rule_id?: number | null;
     protocol_name: string;
     protocol_libc_name: string;
     timestamp_ns: number;
+    timestamp?: string | null;
     violated_rule_id: number;
     violation_type: string;
     violation_response: string;

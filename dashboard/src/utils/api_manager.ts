@@ -92,6 +92,12 @@ export type DeviceDetailsData = {
 
 export type APIDeviceDetailsResponse = APIResponse<DeviceDetailsData>;
 
+export type EventsListData = {
+    events: Event[];
+};
+
+export type APIEventsListResponse = APIResponse<EventsListData>;
+
 export type UpdateDeviceData = {
     device: Device;
 };
@@ -119,6 +125,12 @@ export type RulesListData = {
 };
 
 export type APIRulesListResponse = APIResponse<RulesListData>;
+
+export type CampaignsListData = {
+    campaigns: Campaign[];
+};
+
+export type APICampaignsListResponse = APIResponse<CampaignsListData>;
 
 export type RuleData = {
     rule: Rule;
@@ -259,6 +271,14 @@ export default class APIManager {
 
     static async getDeviceCommunicationMap(): Promise<APIDeviceCommunicationMapResponse> {
         return await this.request<DeviceCommunicationMapData>("/devices/communication_map", {}, "POST");
+    }
+
+    static async listEvents(): Promise<APIEventsListResponse> {
+        return await this.request<EventsListData>("/events/list", {}, "POST");
+    }
+
+    static async listCampaigns(): Promise<APICampaignsListResponse> {
+        return await this.request<CampaignsListData>("/campaigns/list", {}, "POST");
     }
 
     static async listRules(): Promise<APIRulesListResponse> {

@@ -7,7 +7,7 @@ import type { Device } from "@/utils/types";
 import { HardDrive, RefreshCw, Workflow } from "lucide-react";
 import React from "react";
 import { OrbitProgress } from "react-loading-indicators";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import SectionCard from "./overview/SectionCard";
 import StatCard from "./overview/StatCard";
 import SimpleTable from "./users/SimpleTable";
@@ -15,6 +15,7 @@ import DeviceDetailsModal from "./devices/DeviceDetailsModal";
 
 export default function Devices() {
     const navigate = useNavigate();
+    const [searchParams, setSearchParams] = useSearchParams();
     const { user } = useUser();
     const canControlDevices = user ? hasPermission(user.permissions, "control_devices") : false;
 
@@ -44,6 +45,17 @@ export default function Devices() {
     React.useEffect(() => {
         loadList();
     }, [loadList]);
+
+    React.useEffect(() => {
+        const deviceIdParam = searchParams.get("device_id");
+        if (!deviceIdParam) return;
+
+        const deviceId = Number(deviceIdParam);
+        if (!Number.isFinite(deviceId)) return;
+
+        setSelectedDeviceId(deviceId);
+        setDetailsOpen(true);
+    }, [searchParams]);
 
     React.useEffect(() => {
         // best-effort for displaying group names and handler usernames in the editor
@@ -81,6 +93,7 @@ export default function Devices() {
     const closeDetails = () => {
         setDetailsOpen(false);
         setSelectedDeviceId(null);
+        setSearchParams({}, { replace: true });
     };
 
     const openDetails = (deviceId: number) => {

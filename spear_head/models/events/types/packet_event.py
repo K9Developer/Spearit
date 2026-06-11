@@ -193,7 +193,7 @@ class PacketEvent(BaseEvent):
         return EventDB(
             device_id = get_or_create_device_db(self.device)[1],
             rule_id = self.violated_rule_id,
-            campaign_id = None,
+            campaign_id = self.campaign_id,
             event_type = self.event_type.name,
             event_data = self.to_json(),
             timestamp = datetime.datetime.fromtimestamp(
@@ -204,10 +204,22 @@ class PacketEvent(BaseEvent):
         )
     
     def update_db(self):
-        event_db = self.to_db()
+        event_db: Any = self.to_db()
         with SessionMaker() as session:
-            session.add(event_db)
-            session.commit()
-            session.refresh(event_db)
-        self.event_id = int(event_db.event_id) # type: ignore
+            if self.event_id is None:
+                session.add(event_db)
+                session.commit()
+                session.refresh(event_db)
+                self.event_id = int(event_db.event_id) # type: ignore
+
+                event_db.event_data = self.to_json()
+                event_db.campaign_id = self.campaign_id
+                session.commit()
+            else:
+                event_db.event_id = self.event_id  # type: ignore
+                session.merge(event_db)
+                session.commit()
+
+        if self.event_id is None:
+            self.event_id = int(event_db.event_id) # type: ignore
 

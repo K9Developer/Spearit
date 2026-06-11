@@ -591,6 +591,34 @@ def device_communication_map(
 
     return HTTPResponse.ok(response, "Device communication map retrieved successfully", {"connections": communication_map})
 
+@app.post("/events/list")
+def list_events(
+        response: Response,
+        token: str = Body(..., embed=True) ,
+    ):
+    usr, succ = verify_token_validity(token)
+    if not succ or usr is None or usr.user_id is None:
+        Logger.warn(f"Event list access with invalid/expired token: {token}")
+        return HTTPResponse.token_error(response)
+
+    events = EventManager.get_all_events()
+    events_json = [e.to_json() for e in events]
+    return HTTPResponse.ok(response, "Events listed successfully", {"events": events_json})
+
+@app.post("/campaigns/list")
+def list_campaigns(
+        response: Response,
+        token: str = Body(..., embed=True) ,
+    ):
+    usr, succ = verify_token_validity(token)
+    if not succ or usr is None or usr.user_id is None:
+        Logger.warn(f"Campaign list access with invalid/expired token: {token}")
+        return HTTPResponse.token_error(response)
+
+    campaigns = CampaignManager.get_all_campaigns_for_user(usr.user_id)
+    campaigns_json = [c.to_json() for c in campaigns]
+    return HTTPResponse.ok(response, "Campaigns listed successfully", {"campaigns": campaigns_json})
+
 @app.get("/ping")
 def ping():
     return HTTPResponse.ok(Response(), "pong")
