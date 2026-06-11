@@ -212,6 +212,7 @@ int handle_packet(struct __sk_buff *skb, __u8 direction) {
             return 0;
         }
         unsigned int res = packet_response(violated_rule_order, &rules);
+        bpf_printk("Determined response for violation: %u", res);
         pv_info.violation_response = res;
         *ev = pv_info;
         bpf_ringbuf_submit(ev, BPF_RB_FORCE_WAKEUP);

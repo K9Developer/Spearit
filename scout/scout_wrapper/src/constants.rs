@@ -116,4 +116,4 @@ pub const MAX_NETWORK_RECORD_NAME_LENGTH: usize = if MAX_PROCESS_NAME_LENGTH > 1
     18
 };
 
-pub const SERVER_IP: &str = "10.100.102.171:12345";
+pub const SERVER_IP: &str = "10.100.102.174:12345";
