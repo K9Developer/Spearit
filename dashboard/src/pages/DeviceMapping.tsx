@@ -56,7 +56,6 @@ export default function DeviceMapping() {
     }, [load]);
 
     React.useEffect(() => {
-        // best-effort for displaying group names and handler usernames in the editor
         let cancelled = false;
 
         const loadEditorMetadata = async () => {

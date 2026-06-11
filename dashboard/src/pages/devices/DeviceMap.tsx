@@ -55,8 +55,6 @@ const UNKNOWN_X = NODE_W + COLUMN_GAP;
 
 const HIDDEN_HANDLE_CLASS = "!opacity-0 !pointer-events-none !w-px !h-px !min-w-0 !min-h-0 !bg-transparent !border-0";
 
-// ─── Node ────────────────────────────────────────────────────────────────────
-
 const DeviceNode = ({ data }: NodeProps<DeviceNodeData>) => {
     return (
         <div
@@ -95,8 +93,6 @@ const DeviceNode = ({ data }: NodeProps<DeviceNodeData>) => {
         </div>
     );
 };
-
-// ─── Edge ────────────────────────────────────────────────────────────────────
 
 const countToStrokeWidth = (count: number | undefined): number => {
     if (!count || count <= 1) return 1.5;
@@ -190,12 +186,8 @@ const DeviceEdge = ({ id, sourceX, sourceY, targetX, targetY, data, markerEnd, s
     );
 };
 
-// ─── Types registry ──────────────────────────────────────────────────────────
-
 const nodeTypes = { device: DeviceNode };
 const edgeTypes = { device: DeviceEdge };
-
-// ─── Layout helper ───────────────────────────────────────────────────────────
 
 const getDeviceDegreeMap = (connections: DeviceConnection[]) => {
     const map = new Map<number, number>();
@@ -249,15 +241,11 @@ const getColumnHeight = (count: number) => {
     return count * NODE_H + Math.max(0, count - 1) * GAP_Y;
 };
 
-// ─── Props ───────────────────────────────────────────────────────────────────
-
 interface Props {
     devices: Device[];
     connections: DeviceConnection[];
     onDeviceClick: (deviceId: number) => void;
 }
-
-// ─── Component ───────────────────────────────────────────────────────────────
 
 export default function DeviceMap({ devices, connections, onDeviceClick }: Props) {
     const { nodes, edges } = React.useMemo(() => {
@@ -371,7 +359,6 @@ export default function DeviceMap({ devices, connections, onDeviceClick }: Props
 
     return (
         <div className="w-full flex flex-col h-full">
-            {/* Header */}
             <div className="flex items-center justify-between gap-3 px-3.5 py-2.5 bg-secondary border border-secondary rounded-t-lg">
                 <div className="flex items-center gap-2">
                     <span className="text-xs font-medium uppercase tracking-widest text-text-secondary">Device Map</span>
@@ -392,7 +379,6 @@ export default function DeviceMap({ devices, connections, onDeviceClick }: Props
                 </div>
             </div>
 
-            {/* Graph canvas */}
             <div className="border border-t-0 border-secondary rounded-b-lg overflow-hidden bg-background h-[80%]">
                 <ReactFlow
                     nodes={nodes}

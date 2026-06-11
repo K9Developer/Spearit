@@ -371,7 +371,6 @@ export default function Rules() {
 
         if (res.success) {
             toast.success("Rule order updated");
-            // update local order numbers immediately
             setRules((prev) => prev.map((r, idx) => ({ ...r, rule_order: idx })));
         } else {
             toast.error(res.message || "Failed to update order");
