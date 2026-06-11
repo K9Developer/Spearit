@@ -46,6 +46,7 @@ const Login = () => {
     const onLogin = async () => {
         setIsLoading(true);
         const res = await APIManager.loginWithCredentials(email, password, login);
+        setIsLoading(false);
         if (res.success) {
             toast.success("Login successful! Redirecting...");
             setTimeout(() => {

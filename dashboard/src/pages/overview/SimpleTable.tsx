@@ -11,9 +11,10 @@ interface Props<Row> {
     columns: SimpleTableColumn<Row>[];
     rows: Row[];
     emptyText?: string;
+    onRowClick?: (row: Row) => void;
 }
 
-export default function SimpleTable<Row>({ columns, rows, emptyText = "No data" }: Props<Row>) {
+export default function SimpleTable<Row>({ columns, rows, emptyText = "No data", onRowClick }: Props<Row>) {
     if (rows.length === 0) {
         return <p className="text-sm text-text-gray">{emptyText}</p>;
     }
@@ -32,7 +33,11 @@ export default function SimpleTable<Row>({ columns, rows, emptyText = "No data" 
                 </thead>
                 <tbody>
                     {rows.map((row, idx) => (
-                        <tr key={idx} className="border-t border-secondary/60">
+                        <tr
+                            key={idx}
+                            className={`border-t border-secondary/60 ${onRowClick ? "cursor-pointer hover:bg-background/20" : ""}`.trim()}
+                            onClick={() => onRowClick?.(row)}
+                        >
                             {columns.map((col) => (
                                 <td key={col.key} className={`py-3 text-sm text-text-primary align-top ${col.className ?? ""}`.trim()}>
                                     {col.render(row)}

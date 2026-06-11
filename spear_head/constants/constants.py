@@ -2,7 +2,7 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING: 
     from models.events.types.packet_event import ProtocolInfoEntry
 
-DEBUG = True
+DEBUG = False
 
 INT_FIELD_SIZE = 8 # 64 bit
 

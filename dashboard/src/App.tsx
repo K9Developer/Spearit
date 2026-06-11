@@ -6,10 +6,12 @@ import toast, { Toaster, useToasterStore } from "react-hot-toast";
 import StartupNavigator from "./pages/StartupNavigator";
 import { useUser } from "./context/useUser";
 import Logo from "./components/Logo";
-import { Gavel, HardDrive, Home, LogOut, Settings, Users } from "lucide-react";
+import { Activity, Gavel, HardDrive, Home, LogOut, Settings, ShieldAlert, Users } from "lucide-react";
 import type { SidebarConfig } from "./components/Sidebar";
 import Sidebar from "./components/Sidebar";
 import Overview from "./pages/Overview";
+import CampaignsPage from "./pages/Campaigns";
+import EventsPage from "./pages/Events";
 import UsersPage from "./pages/Users";
 import DevicesPage from "./pages/Devices";
 import DeviceMappingPage from "./pages/DeviceMapping";
@@ -37,6 +39,8 @@ export default function App() {
             titleCloseIcon: <Logo showText={false} />,
             items: [
                 { title: "Home", icon: <Home size={18} />, onClick: () => navigate("/dashboard") },
+                { title: "Events", icon: <Activity size={18} />, onClick: () => navigate("/dashboard/events") },
+                { title: "Campaigns", icon: <ShieldAlert size={18} />, onClick: () => navigate("/dashboard/campaigns") },
                 { title: "Devices", icon: <HardDrive size={18} />, onClick: () => navigate("/dashboard/devices") },
                 { title: "Users", icon: <Users size={18} />, onClick: () => navigate("/dashboard/users") },
                 { title: "Rules", icon: <Gavel size={18} />, onClick: () => navigate("/dashboard/rules") },
@@ -87,6 +91,8 @@ export default function App() {
                     <Route path="/login" element={<Login />} />
 
                     <Route path="/dashboard" element={<Overview />} />
+                    <Route path="/dashboard/events" element={<EventsPage />} />
+                    <Route path="/dashboard/campaigns" element={<CampaignsPage />} />
                     <Route path="/dashboard/devices" element={<DevicesPage />} />
                     <Route path="/dashboard/devices/map" element={<DeviceMappingPage />} />
                     <Route path="/dashboard/users" element={<UsersPage />} />

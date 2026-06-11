@@ -18,7 +18,7 @@ class EventManager:
         with SessionMaker() as session:
             event_dbs = session.query(EventDB).order_by(EventDB.timestamp).all()
             for event_db in event_dbs:
-                if event_db.event_type == EventKind.to_str(EventKind.PACKET): # type: ignore
+                if event_db.event_type.lower() == EventKind.to_str(EventKind.PACKET): # type: ignore
                     event = PacketEvent.from_db(event_db)
                 else:
                     event = BaseEvent.from_db(event_db)

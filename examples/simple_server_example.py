@@ -25,7 +25,12 @@ if __name__ == "__main__":
             with conn:
                 print(f"Connected by {addr}")
                 while True:
-                    data = conn.recv(1024)
-                    if not data:
+                    try:
+                        data = conn.recv(1024)
+                        if not data:
+                            break
+                        print(f"Received data: {data.decode('utf-8')}")
+                        conn.sendall("echo: ".encode('utf-8') + data)
+                    except:
+                        print(f"Connection with {addr} closed.")
                         break
-                    print(f"Received data: {data.decode('utf-8')}")

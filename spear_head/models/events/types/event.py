@@ -82,7 +82,7 @@ class BaseEvent:
         return EventDB(
             device_id = get_or_create_device_db(self.device)[1],
             rule_id = self.violated_rule_id,
-            campaign_id = None,
+            campaign_id = self.campaign_id,
             event_type = self.event_type.name,
             event_data = {},
             timestamp = self.timestamp_ns,
